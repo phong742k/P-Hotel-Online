@@ -263,3 +263,35 @@ body {
     border-top: 1px dashed rgba(255,255,255,0.3);
     padding-top: 8px;
 }
+
+/* =========================================
+   RESPONSIVE CHO ĐIỆN THOẠI & MÁY TÍNH BẢNG
+   ========================================= */
+@media (max-width: 768px) {
+    /* Ép sidebar nhỏ lại chỉ vừa đủ chứa icon */
+    .sidebar {
+        width: 60px; 
+    }
+    
+    /* Ẩn hoàn toàn chữ của các tab */
+    .nav-text {
+        display: none; 
+    }
+    
+    /* Căn giữa icon và phóng to lên chút cho dễ bấm */
+    .nav-item {
+        text-align: center;
+        padding: 15px 0;
+        font-size: 20px; 
+    }
+    
+    /* Thu hẹp padding của nội dung chính để có thêm không gian hiển thị */
+    .main-content {
+        padding: 10px; 
+    }
+
+    /* Đảm bảo logo co lại vừa vặn */
+    .logo img {
+        max-width: 90% !important;
+    }
+}

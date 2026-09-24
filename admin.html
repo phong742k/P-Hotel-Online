@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý - Vạn Hải Hotel</title>
-    <link rel="icon" type="image/png" href="https://wohnxhepcaqxyzrgjbrj.supabase.co/storage/v1/object/public/Image/PHotelOnline-01.png">
     <link rel="stylesheet" href="admin_style.css">
     <!-- Thư viện Biểu đồ -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,13 +12,16 @@
     <div class="admin-layout">
         <!-- SIDEBAR MENU -->
         <div class="sidebar">
-            <h1 class="logo">VẠN HẢI ADMIN</h1>
+            <!-- Logo bấm vào để load lại trang -->
+            <div class="logo" onclick="window.location.reload()" style="cursor: pointer; padding: 15px 5px; text-align: center; border-bottom: 1px solid #333;">
+                <img src="https://wohnxhepcaqxyzrgjbrj.supabase.co/storage/v1/object/public/Image/PHotelOnline-01.png" alt="Logo Vạn Hải" style="max-width: 100%; height: auto; max-height: 45px;">
+            </div>
             <ul class="nav-menu">
-                <li class="nav-item active" onclick="switchAdminTab('tabRoomStatus', this)">🛏️ Trạng thái phòng</li>
-                <li class="nav-item" onclick="switchAdminTab('tabRevenue', this)">📊 Quản lý doanh thu</li>
-                <li class="nav-item" onclick="switchAdminTab('tabExpense', this)">💸 Ghi chép chi phí</li>
-                <li class="nav-item" onclick="switchAdminTab('tabCustomer', this)">👥 Quản lý khách hàng</li>
-                <li class="nav-item" onclick="switchAdminTab('tabSettings', this)">⚙️ Cài đặt (Giá)</li>
+                <li class="nav-item active" onclick="switchAdminTab('tabRoomStatus', this)" title="Trạng thái phòng">🛏️ <span class="nav-text">Trạng thái phòng</span></li>
+                <li class="nav-item" onclick="switchAdminTab('tabRevenue', this)" title="Quản lý doanh thu">📊 <span class="nav-text">Quản lý doanh thu</span></li>
+                <li class="nav-item" onclick="switchAdminTab('tabExpense', this)" title="Ghi chép chi phí">💸 <span class="nav-text">Ghi chép chi phí</span></li>
+                <li class="nav-item" onclick="switchAdminTab('tabCustomer', this)" title="Quản lý khách hàng">👥 <span class="nav-text">Quản lý khách hàng</span></li>
+                <li class="nav-item" onclick="switchAdminTab('tabSettings', this)" title="Cài đặt">⚙️ <span class="nav-text">Cài đặt (Giá)</span></li>
             </ul>
         </div>
 
