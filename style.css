@@ -126,8 +126,8 @@ body {
     font-weight: 500;
 }
 
-.status-trong { background-color: #159733; align-items: center; color: #e4ffb2; }
-.status-cokhach { background-color: #a90b0b }
+.status-trong { background-color: #2aac48; align-items: center; color: #e4ffb2; }
+.status-cokhach { background-color: #a10000 }
 .status-chuadon { background-color: #6c757d; align-items: center; color: #000; }
 
 /* ================= STYLES CHO TAB LỊCH SỬ ================= */
