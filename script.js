@@ -5,7 +5,7 @@ let supabaseClient = null;
 if (window.supabase) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let roomsData = [];
-const layout = { left: ['Tầng G', 'Tầng 1', 'Tầng 2'], right: ['Tầng 3', 'Tầng 4', 'Tầng 5'] };
+const layout = { left: ['Tầng G', 'Tầng 1', 'Tầng 2'], right: ['Tầng 5', 'Tầng 3', 'Tầng 4'] };
 
 let currentDrinks = { nuoc_suoi: 0, nuoc_ngot: 0, bia: 0, mi_tom: 0 };
 let updateDrinks = { nuoc_suoi: 0, nuoc_ngot: 0, bia: 0, mi_tom: 0 };
@@ -814,6 +814,7 @@ async function executeDeleteBookings() {
         closeAdminDeleteModal();
         alert('Xóa các bản ghi thành công!');
         fetchHistoryFromSupabase();
+        updateRevenueSummary();
     } catch (err) { alert('Lỗi khi xóa: ' + err.message); }
 }
 
