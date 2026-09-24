@@ -61,7 +61,13 @@ body {
     background-color: #121212;
 }
 
-.admin-tab { display: none; flex-direction: column; height: 100%; }
+.admin-tab { 
+    display: none; 
+    flex-direction: column; 
+    height: auto; 
+    min-height: 100%; 
+    padding-bottom: 40px; 
+}
 .admin-tab.active-tab { display: flex; }
 
 .header-action {
