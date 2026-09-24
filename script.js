@@ -1129,3 +1129,34 @@ async function exportExcelInvoice() {
     
     closeInvoiceModal();
 }
+
+// =====================================================================
+// ĐỒNG HỒ THỜI GIAN THỰC (HEADER LỄ TÂN)
+// =====================================================================
+function startRealtimeClock() {
+    const timeEl = document.getElementById('clockTime');
+    const dateEl = document.getElementById('clockDate');
+    if (!timeEl || !dateEl) return;
+
+    const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+    
+    setInterval(() => {
+        const now = new Date();
+        
+        // Cập nhật giờ:phút:giây
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        timeEl.innerText = `${h}:${m}:${s}`;
+
+        // Cập nhật Thứ, ngày/tháng/năm
+        const dayName = days[now.getDay()];
+        const d = String(now.getDate()).padStart(2, '0');
+        const mo = String(now.getMonth() + 1).padStart(2, '0');
+        const y = now.getFullYear();
+        dateEl.innerText = `${dayName}, ${d}/${mo}/${y}`;
+    }, 1000); // Nhảy số mỗi 1 giây
+}
+
+// Chạy đồng hồ ngay lập tức
+startRealtimeClock();

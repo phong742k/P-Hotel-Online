@@ -13,6 +13,7 @@ function switchAdminTab(tabId, element) {
     document.getElementById(tabId).classList.add('active-tab');
     
     if (tabId === 'tabRevenue') fetchRevenueData();
+    if (tabId === 'tabRoomStatus') fetchAdminRoomStatus();
 }
 
 // Hàm format tiền
@@ -889,4 +890,200 @@ async function saveAllSettings() {
     } catch (err) {
         alert('Lỗi khi lưu cài đặt: ' + err.message);
     }
+}
+
+// =====================================================================
+// TAB TRẠNG THÁI PHÒNG (DÀNH CHO QUẢN LÝ - CHỈ XEM)
+// =====================================================================
+
+// Load trạng thái phòng ngay khi vừa mở trang Admin
+window.addEventListener('DOMContentLoaded', () => {
+    fetchAdminRoomStatus();
+});
+
+// Hàm tính tiền tạm tính cho Admin (Sao chép logic chuẩn từ Lễ tân)
+function calculateTempAdminPrice(roomName, checkInStr, pType, priceConfig) {
+    const checkIn = new Date(checkInStr);
+    const checkOut = new Date(); // Thời điểm hiện tại
+    const roomCfg = priceConfig[roomName] || {};
+
+    let baseFirstHour = roomCfg.first_hour ? Number(roomCfg.first_hour) : 80000;
+    let baseNightPrice = roomCfg.overnight ? Number(roomCfg.overnight) : 200000;
+    let baseDayNightPrice = roomCfg.daily ? Number(roomCfg.daily) : 300000;
+
+    let roomPrice = 0;
+
+    if (pType === 'hourly') {
+        let diffMins = Math.floor((checkOut - checkIn) / 60000);
+        let hours = 0;
+        if (diffMins > 15) hours = Math.floor((diffMins - 15) / 60) + 1;
+        if (hours < 1) hours = 1;
+        
+        if (hours === 1) roomPrice = baseFirstHour;
+        else if (hours === 2) roomPrice = baseFirstHour + 20000;
+        else roomPrice = baseFirstHour + 20000 + (hours - 2) * 10000;
+    } else {
+        let inHour = checkIn.getHours();
+        if (pType === 'daily') {
+            if (inHour >= 0 && inHour < 12) {
+                let earlyHours = Math.ceil((new Date(checkIn).setHours(12, 0, 0, 0) - checkIn) / 3600000);
+                roomPrice = baseDayNightPrice + (earlyHours * 20000);
+            } else roomPrice = baseDayNightPrice;
+        } else if (pType === 'overnight') {
+            if (inHour >= 12 && inHour < 18) {
+                let earlyHours = Math.ceil((new Date(checkIn).setHours(18, 0, 0, 0) - checkIn) / 3600000);
+                roomPrice = baseNightPrice + (earlyHours * 20000);
+            } else roomPrice = baseNightPrice;
+        }
+
+        let standardCheckout = new Date(checkIn);
+        if (pType === 'overnight' && inHour >= 0 && inHour < 12) standardCheckout.setHours(12, 0, 0, 0);
+        else { standardCheckout.setDate(standardCheckout.getDate() + 1); standardCheckout.setHours(12, 0, 0, 0); }
+
+        let extraDays = 0, lateHours = 0;
+        while (checkOut > standardCheckout) {
+            let cutoff20h = new Date(standardCheckout);
+            cutoff20h.setHours(20, 0, 0, 0);
+            if (checkOut >= cutoff20h) { extraDays++; standardCheckout.setDate(standardCheckout.getDate() + 1); }
+            else {
+                let diffMins = Math.floor((checkOut - standardCheckout) / 60000);
+                if (diffMins > 15) lateHours = Math.floor((diffMins - 15) / 60) + 1;
+                break;
+            }
+        }
+        if (extraDays > 0) roomPrice += extraDays * baseDayNightPrice;
+        if (lateHours > 0) roomPrice += lateHours * 20000;
+    }
+    return roomPrice;
+}
+
+// Tải trạng thái phòng và chia thành 2 cột (Trái / Phải)
+async function fetchAdminRoomStatus() {
+    try {
+        // 1. Lấy bảng giá để tính tiền hiện tại
+        const { data: priceData } = await supabaseClient.from('room_pricing').select('*');
+        let priceConfig = {};
+        if (priceData) priceData.forEach(p => priceConfig[p.room_name] = p);
+
+        // 2. Lấy dữ liệu phòng và khách
+        const { data: rooms, error } = await supabaseClient
+            .from('rooms')
+            .select(`*, bookings (id, status, price_type, check_in_time, customer_id, customers (guest_name, guest_cccd))`)
+            .order('room_name', { ascending: true });
+            
+        if (error) throw error;
+
+        // 3. Khai báo Layout 2 cột chuẩn ý mày
+        const layout = {
+            left: ['Tầng G', 'Tầng 1', 'Tầng 2'],
+            right: ['Tầng 5', 'Tầng 3', 'Tầng 4']
+        };
+
+        const floorsData = {};
+        layout.left.forEach(f => floorsData[f] = []);
+        layout.right.forEach(f => floorsData[f] = []);
+
+        rooms.forEach(room => {
+            let floorChar = room.room_name.charAt(0);
+            let floorName = floorChar === '0' ? 'Tầng G' : `Tầng ${floorChar}`;
+            if (floorsData[floorName]) floorsData[floorName].push(room);
+        });
+
+        const gridContainer = document.getElementById('adminRoomGrid');
+        // Ép CSS Flexbox trực tiếp để chia 2 cột co giãn cực mượt
+        gridContainer.style.display = 'flex';
+        gridContainer.style.flexWrap = 'wrap';
+        gridContainer.style.gap = '20px';
+        gridContainer.style.alignItems = 'flex-start';
+        
+        let html = '';
+
+        // Hàm render từng cột
+        const renderColumn = (floorList) => {
+            let colHtml = '<div style="flex: 1; min-width: 320px; display: flex; flex-direction: column; gap: 15px;">';
+            floorList.forEach(floorName => {
+                const floorRooms = floorsData[floorName];
+                if (!floorRooms || floorRooms.length === 0) return;
+
+                colHtml += `<div>`;
+                colHtml += `<h3 style="color: #ffc107; margin-bottom: 15px; border-bottom: 1px dashed #333; padding-bottom: 5px;">${floorName}</h3>`;
+                // Ép các phòng trong 1 tầng thành Grid tự động chia cột
+                colHtml += `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;">`;
+
+                floorRooms.forEach(room => {
+                    let activeBooking = room.bookings ? room.bookings.find(b => b.status === 'active') : null;
+                    let bgClass = room.status === 'trong' ? 'bg-trong' : (room.status === 'chuadon' ? 'bg-chuadon' : 'bg-cokhach');
+                    
+                    if (activeBooking) {
+                        // Thẻ khi CÓ KHÁCH (Format chuẩn)
+                        let type = activeBooking.price_type === 'hourly' ? 'Theo giờ' : (activeBooking.price_type === 'overnight' ? 'Qua đêm' : 'Ngày đêm');
+                        let guest = activeBooking.customers ? activeBooking.customers.guest_name : 'Khách lẻ';
+                        let tempPrice = calculateTempAdminPrice(room.room_name, activeBooking.check_in_time, activeBooking.price_type, priceConfig);
+                        
+                        colHtml += `
+                            <div class="admin-room-card ${bgClass}" onclick='showAdminRoomDetails(${JSON.stringify(room)}, ${JSON.stringify(activeBooking)})'>
+                                <h3 style="margin: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">P.${room.room_name} - ${type}</h3>
+                                <div class="guest-mini-info" style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.2);">
+                                    👤 ${guest}<br>
+                                    <span style="font-size: 16px; color:#00ff99; font-weight: bold; display: block; margin-top: 4px;">${tempPrice.toLocaleString('vi-VN')}đ</span>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // Thẻ khi TRỐNG hoặc CHƯA DỌN
+                        let statusText = room.status === 'trong' ? 'Sẵn sàng' : 'Chưa dọn';
+                        colHtml += `
+                            <div class="admin-room-card ${bgClass}" onclick='showAdminRoomDetails(${JSON.stringify(room)}, null)'>
+                                <h3 style="margin: 0; font-size: 18px;">Phòng ${room.room_name}</h3>
+                                <span style="font-size: 14px; opacity: 0.9; margin-top: 5px;">${statusText}</span>
+                            </div>
+                        `;
+                    }
+                });
+                colHtml += `</div></div>`;
+            });
+            colHtml += '</div>';
+            return colHtml;
+        };
+
+        // Ghép cột Trái và cột Phải vào giao diện
+        html += renderColumn(layout.left);
+        html += renderColumn(layout.right);
+        
+        gridContainer.innerHTML = html;
+        gridContainer.className = ''; // Xóa class grid cũ để tránh đụng độ CSS
+
+    } catch (e) {
+        console.error('Lỗi lấy dữ liệu phòng:', e.message);
+    }
+}
+
+// Bật Modal hiển thị thông tin khách (Read-Only)
+function showAdminRoomDetails(room, booking) {
+    let statusText = room.status === 'trong' ? '🟢 Sẵn sàng' : (room.status === 'chuadon' ? '⚪ Chưa dọn' : '🔴 Đang có khách');
+    document.getElementById('viewGuestRoomName').innerText = `Phòng ${room.room_name} - ${statusText}`;
+    
+    let infoHtml = '';
+    if (!booking) {
+        infoHtml = `<p style="color: #aaa; text-align: center; margin-top: 20px;">Phòng hiện tại không có khách lưu trú.</p>`;
+    } else {
+        let type = booking.price_type === 'hourly' ? 'Theo giờ' : (booking.price_type === 'overnight' ? 'Qua đêm' : 'Ngày đêm');
+        let checkIn = new Date(booking.check_in_time).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+        let guest = booking.customers ? booking.customers.guest_name : 'Khách lẻ (Không lưu tên)';
+        let cccd = booking.customers && booking.customers.guest_cccd ? booking.customers.guest_cccd : 'Không có dữ liệu';
+        
+        infoHtml = `
+            <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <p style="margin: 0 0 8px 0; color: #ccc;">Loại thuê: <b style="color: #fff;">${type}</b></p>
+                <p style="margin: 0; color: #ccc;">Giờ nhận phòng: <b style="color: #fff;">${checkIn}</b></p>
+            </div>
+            <div style="background: #2a2a2a; padding: 15px; border-radius: 8px;">
+                <p style="margin: 0 0 8px 0; color: #ccc;">Khách: <b style="color: #00ff99;">${guest}</b></p>
+                <p style="margin: 0; color: #ccc;">CCCD: <b style="color: #fff;">${cccd}</b></p>
+            </div>
+        `;
+    }
+    
+    document.getElementById('viewGuestInfo').innerHTML = infoHtml;
+    document.getElementById('viewGuestModal').style.display = 'flex';
 }

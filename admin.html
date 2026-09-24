@@ -14,7 +14,8 @@
         <div class="sidebar">
             <h1 class="logo">VẠN HẢI ADMIN</h1>
             <ul class="nav-menu">
-                <li class="nav-item active" onclick="switchAdminTab('tabRevenue', this)">📊 Quản lý doanh thu</li>
+                <li class="nav-item active" onclick="switchAdminTab('tabRoomStatus', this)">🛏️ Trạng thái phòng</li>
+                <li class="nav-item" onclick="switchAdminTab('tabRevenue', this)">📊 Quản lý doanh thu</li>
                 <li class="nav-item" onclick="switchAdminTab('tabExpense', this)">💸 Ghi chép chi phí</li>
                 <li class="nav-item" onclick="switchAdminTab('tabCustomer', this)">👥 Quản lý khách hàng</li>
                 <li class="nav-item" onclick="switchAdminTab('tabSettings', this)">⚙️ Cài đặt (Giá)</li>
@@ -23,9 +24,20 @@
 
         <!-- MAIN CONTENT -->
         <div class="main-content">
-            
+            <!-- TAB 0: TRẠNG THÁI PHÒNG (QUẢN LÝ TỔNG QUAN) -->
+            <div id="tabRoomStatus" class="admin-tab active-tab">
+                <div class="header-action">
+                    <h2>Hiện Trạng Phòng (Dành cho Quản lý)</h2>
+                    <button class="btn-submit" style="margin-top:0; padding: 10px 20px; background-color: #17a2b8;" onclick="fetchAdminRoomStatus()">🔄 Làm mới</button>
+                </div>
+                
+                <!-- Lưới hiển thị phòng tự động co giãn -->
+                <div id="adminRoomGrid" class="admin-room-grid">
+                    <!-- Javascript sẽ đổ các phòng xanh/đỏ/xám vào đây -->
+                </div>
+            </div>
             <!-- TAB 1: DOANH THU -->
-            <div id="tabRevenue" class="admin-tab active-tab">
+            <div id="tabRevenue" class="admin-tab">
                 <div class="header-action">
                     <h2>Báo Cáo Doanh Thu</h2>
                     <div class="filter-box">
@@ -382,6 +394,18 @@
                 <input type="text" id="editCustProvince" placeholder="Tỉnh / Thành phố" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
             </div>
             <button class="btn-submit" style="width:100%; padding:10px; background-color: #007bff;" onclick="submitEditCustomer()">Lưu Thay Đổi</button>
+        </div>
+    </div>
+
+    <!-- MODAL XEM THÔNG TIN PHÒNG (CHỈ XEM) -->
+    <div id="viewGuestModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center;">
+        <div class="modal-content" style="background-color: #1e1e1e; color: #fff; padding: 25px; border-radius: 10px; width: 400px; max-width: 90%; position: relative;">
+            <span class="close-btn" onclick="document.getElementById('viewGuestModal').style.display='none'" style="position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #aaa;">&times;</span>
+            <h2 id="viewGuestRoomName" style="margin-bottom: 15px; font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 8px; color: #00ff99;">Chi tiết phòng</h2>
+            
+            <div id="viewGuestInfo" style="line-height: 1.8; font-size: 15px;">
+                <!-- Dữ liệu JS sẽ nhúng vào đây -->
+            </div>
         </div>
     </div>
 </body>
