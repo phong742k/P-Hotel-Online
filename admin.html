@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý - Vạn Hải Hotel</title>
+    <link rel="stylesheet" href="admin_style.css">
+    <!-- Thư viện Biểu đồ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- SIDEBAR MENU -->
+        <div class="sidebar">
+            <h1 class="logo">VẠN HẢI ADMIN</h1>
+            <ul class="nav-menu">
+                <li class="nav-item active" onclick="switchAdminTab('tabRevenue', this)">📊 Quản lý doanh thu</li>
+                <li class="nav-item" onclick="switchAdminTab('tabExpense', this)">💸 Ghi chép chi phí</li>
+                <li class="nav-item" onclick="switchAdminTab('tabCustomer', this)">👥 Quản lý khách hàng</li>
+                <li class="nav-item" onclick="switchAdminTab('tabSettings', this)">⚙️ Cài đặt (Giá)</li>
+            </ul>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            
+            <!-- TAB 1: DOANH THU -->
+            <div id="tabRevenue" class="admin-tab active-tab">
+                <div class="header-action">
+                    <h2>Báo Cáo Doanh Thu</h2>
+                    <div class="filter-box">
+                        <button class="btn-quick" onclick="setQuickFilter('7days')">7 ngày qua</button>
+                        <button class="btn-quick" onclick="setQuickFilter('thisMonth')">Tháng này</button>
+                        <button class="btn-quick" onclick="setQuickFilter('lastMonth')">Tháng trước</button>
+                        <input type="date" id="filterStart">
+                        <input type="date" id="filterEnd">
+                        <button class="btn-submit" style="margin-top:0; padding: 10px 20px;" onclick="fetchRevenueData()">Lọc</button>
+                    </div>
+                </div>
+
+                <!-- CARDS -->
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <h3>Tổng Doanh Thu</h3>
+                        <div class="value" id="valTotalRev">0đ</div>
+                        <div class="comparison" id="compTotalRev">--</div>
+                    </div>
+                    <div class="card">
+                        <h3>Tiền Phòng</h3>
+                        <div class="value" id="valRoomRev" style="color: #1ee987;">0đ</div>
+                        <div class="comparison" id="compRoomRev">--</div>
+                    </div>
+                    <div class="card">
+                        <h3>Tiền Nước</h3>
+                        <div class="value" id="valDrinkRev" style="color: #2196F3;">0đ</div>
+                        <div class="comparison" id="compDrinkRev">--</div>
+                    </div>
+                    <div class="card">
+                        <h3>Phụ Thu</h3>
+                        <div class="value" id="valSurcharge" style="color: #ff8000;">0đ</div>
+                        <div class="comparison" id="compSurcharge">--</div>
+                    </div>
+                    <div class="card">
+                        <h3>Giảm Giá</h3>
+                        <div class="value" id="valDiscount" style="color: #e91e63;">0đ</div>
+                        <div class="comparison" id="compDiscount">--</div>
+                    </div>
+                </div>
+
+                <!-- CHART -->
+                <div class="chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+
+            <!-- TAB 2: CHI PHÍ -->
+            <div id="tabExpense" class="admin-tab">
+                <div class="header-action">
+                    <h2>Quản Lý Chi Phí Khách Sạn</h2>
+                </div>
+
+                <!-- KHU VỰC 2 CỘT: FORM NHẬP + THỐNG KÊ -->
+                <div class="expense-top-grid">
+                    
+                    <!-- BOX 1: FORM NHẬP CHI PHÍ -->
+                    <div class="expense-form-box">
+                        <h3>Thêm Khoản Chi Mới</h3>
+                        <div class="form-group">
+                            <label>Ngày chi:</label>
+                            <input type="date" id="expDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Loại chi phí:</label>
+                            <select id="expCategory" onchange="handleCategoryChange()">
+                                <option value="Tiền nhà">Tiền nhà (Mặt bằng)</option>
+                                <option value="Chi phí hành chính (Công an)">Chi phí hành chính (Công an)</option>
+                                <option value="Điện, nước, internet">Điện, nước, internet</option>
+                                <option value="Nhập đồ uống / Vật tư">Nhập đồ uống / Vật tư</option>
+                                <option value="Lương nhân viên">Lương nhân viên</option>
+                                <option value="Sửa chữa, bảo dưỡng">Sửa chữa, bảo dưỡng</option>
+                                <option value="Khác">Khác (Tự nhập)</option>
+                            </select>
+                        </div>
+                        <!-- Ô nhập thêm nếu chọn Khác -->
+                        <div class="form-group" id="customCategoryGroup" style="display: none;">
+                            <label>Tên loại chi phí khác:</label>
+                            <input type="text" id="expCustomCategory" placeholder="Nhập tên loại chi phí...">
+                        </div>
+                        <div class="form-group">
+                            <label>Số tiền (VNĐ):</label>
+                            <input type="number" id="expAmount" placeholder="Nhập số tiền...">
+                        </div>
+                        <div class="form-group">
+                            <label>Ghi nhận vào tháng:</label>
+                            <input type="month" id="expMonthTarget">
+                        </div>
+                        <div class="form-group">
+                            <label>Mô tả chi tiết:</label>
+                            <textarea id="expDescription" rows="2" placeholder="Nhập mô tả..." style="width:100%; padding:10px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:5px; resize:none;"></textarea>
+                        </div>
+                        <button class="btn-submit" style="width:100%; padding:12px; background-color: #28a745;" onclick="submitExpense()">Thêm Chi Phí</button>
+                    </div>
+
+                    <!-- BOX 2: THỐNG KÊ CHI PHÍ THEO LOẠI & SO SÁNH -->
+                    <div class="expense-stats-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 id="statsTitle">Thống kê chi phí tháng này</h3>
+                            <input type="month" id="filterStatsMonth" onchange="fetchExpenseData()" style="background:#2a2a2a; color:#fff; border:1px solid #444; padding:5px 10px; border-radius:4px;">
+                        </div>
+                        <div class="total-expense-banner">
+                            <span>Tổng chi tháng:</span> <b id="totalExpenseVal" style="color: #ff4d4d; font-size: 22px;">0đ</b>
+                        </div>
+                        <div class="stats-table-wrapper">
+                            <table class="expense-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid #444; text-align: left; color: #aaa; font-size: 13px;">
+                                        <th style="padding: 8px;">Loại chi phí</th>
+                                        <th style="padding: 8px; text-align: right;">Số tiền</th>
+                                        <th style="padding: 8px; text-align: right;">So với tháng trước</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="expenseCategoryStatsBody">
+                                    <!-- Render bằng JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- BOX 3: DANH SÁCH CHI PHÍ GẦN ĐÂY -->
+                <div class="expense-list-box" style="margin-top: 25px; background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3>Danh Sách Chi Phí Ghi Nhận</h3>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <label style="font-size: 14px; color: #aaa;">Lọc xem tháng:</label>
+                            <input type="month" id="filterListMonth" onchange="fetchExpenseData()" style="background:#2a2a2a; color:#fff; border:1px solid #444; padding:5px 10px; border-radius:4px;">
+                        </div>
+                    </div>
+                    <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
+                        <table class="expense-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead>
+                                <tr style="background: #2a2a2a; color: #ffc107; position: sticky; top: 0;">
+                                    <th style="padding: 10px;">Ngày chi</th>
+                                    <th style="padding: 10px;">Loại chi phí</th>
+                                    <th style="padding: 10px;">Mô tả</th>
+                                    <th style="padding: 10px;">Tháng ghi nhận</th>
+                                    <th style="padding: 10px; text-align: right;">Số tiền</th>
+                                    <th style="padding: 10px; text-align: center;">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expenseListBody">
+                                <!-- Render bằng JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TAB 3: KHÁCH HÀNG -->
+            <div id="tabCustomer" class="admin-tab">
+                <div class="header-action">
+                    <h2>Quản Lý Khách Hàng & Lịch Sử Lưu Trú</h2>
+                    <button class="btn-submit" style="margin-top:0; padding: 10px 20px; background-color: #28a745;" onclick="openAddCustomerModal()">+ Thêm Khách Hàng</button>
+                </div>
+
+                <!-- CARDS TỔNG QUAN KHÁCH HÀNG -->
+                <div class="dashboard-cards" style="margin-bottom: 20px;">
+                    <div class="card">
+                        <h3>Tổng số khách hàng</h3>
+                        <div class="value" id="statTotalCust" style="color: #007bff;">0</div>
+                    </div>
+                    <div class="card">
+                        <h3>Khách mới tháng này</h3>
+                        <div class="value" id="statNewCustMonth" style="color: #00ff99;">0</div>
+                    </div>
+                    <div class="card">
+                        <h3>Khách quay lại (Quen)</h3>
+                        <div class="value" id="statReturningCust" style="color: #ffc107;">0</div>
+                    </div>
+                </div>
+
+                <!-- THANH TÌM KIẾM & BỘ LỌC -->
+                <div class="filter-section" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <input type="text" id="custSearchInput" placeholder="🔍 Tìm theo Tên khách hàng hoặc số CCCD..." oninput="filterCustomerTable()" style="flex: 2; background-color: #2a2a2a; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 5px;">
+                </div>
+
+                <!-- BẢNG DANH SÁCH KHÁCH HÀNG -->
+                <div class="table-wrapper" style="flex: 1; overflow-y: auto; border: 1px solid #333; border-radius: 5px; background: #1a1a1a;">
+                    <table class="history-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="background-color: #2a2a2a; position: sticky; top: 0; color: #ffc107;">
+                                <th style="padding: 12px 15px; width: 22%;">Họ tên</th>
+                                <th style="padding: 12px 15px; width: 15%;">Số CCCD</th>
+                                <th style="padding: 12px 15px; width: 12%;">Ngày sinh</th>
+                                <th style="padding: 12px 15px; width: 30%;">Địa chỉ / Tỉnh thành</th>
+                                <th style="padding: 12px 15px; width: 8%; text-align: center;">Số lần ở</th>
+                                <th style="padding: 12px 15px; width: 13%; text-align: center;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerTableBody">
+                            <tr><td colspan="6" style="text-align: center; color: #888; padding: 30px;">Nhập tên hoặc số CCCD vào ô tìm kiếm bên trên để tra cứu khách hàng...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 4: CÀI ĐẶT (GIÁ) -->
+            <div id="tabSettings" class="admin-tab">
+                <div class="header-action">
+                    <h2>Cài Đặt Giá Phòng & Dịch Vụ</h2>
+                    <button class="btn-submit" style="margin-top:0; padding: 10px 20px; background-color: #28a745;" onclick="saveAllSettings()">Lưu Tất Cả Thay Đổi</button>
+                </div>
+
+                <div class="settings-grid" style="display: flex; gap: 20px;">
+                    <!-- BOX 1: GIÁ RIÊNG CHO TỪNG PHÒNG -->
+                    <div class="settings-box" style="flex: 1; background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333;">
+                        <h3 style="color: #ffc107; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 8px;">Cài Đặt Giá Riêng Cho Từng Phòng (Tùy chọn)</h3>
+                        <p style="font-size: 13px; color: #aaa; margin-bottom: 15px;">Nếu phòng nào không cài đặt ở đây, hệ thống sẽ tự động áp dụng mức giá chung theo loại phòng (Thường/VIP).</p>
+                        
+                        <div class="table-wrapper" style="overflow-x: auto;">
+                            <table class="expense-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                                <thead>
+                                    <tr style="background: #2a2a2a; color: #ffc107;">
+                                        <th style="padding: 10px;">Tên phòng</th>
+                                        <th style="padding: 10px;">Giá 1h đầu (VNĐ)</th>
+                                        <th style="padding: 10px;">Giá Qua đêm (VNĐ)</th>
+                                        <th style="padding: 10px;">Giá Ngày đêm (VNĐ)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="roomSpecificPricingBody">
+                                    <!-- Render bằng JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- BOX 2: GIÁ ĐỒ UỐNG -->
+                    <div class="settings-box" style="flex: 1; background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333;">
+                        <h3 style="color: #ffc107; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 8px;">Đơn Giá Đồ Uống & Dịch Vụ</h3>
+                        
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label>Nước suối (VNĐ):</label>
+                            <input type="number" id="setting_drink_nuoc_suoi" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label>Nước ngọt (VNĐ):</label>
+                            <input type="number" id="setting_drink_nuoc_ngot" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label>Bia (VNĐ):</label>
+                            <input type="number" id="setting_drink_bia" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label>Mì tôm (VNĐ):</label>
+                            <input type="number" id="setting_drink_mi_tom" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Thư viện Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="admin_script.js"></script>
+
+    <!-- MODAL SỬA CHI PHÍ -->
+    <div id="editExpenseModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center;">
+        <div class="modal-content" style="background-color: #1e1e1e; color: #fff; padding: 25px; border-radius: 10px; width: 450px; position: relative;">
+            <span class="close-btn" onclick="closeEditExpenseModal()" style="position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #aaa;">&times;</span>
+            <h2 style="margin-bottom: 15px; font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 8px; color: #ffc107;">Sửa Khoản Chi Phí</h2>
+            
+            <input type="hidden" id="editExpId">
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label>Ngày chi:</label>
+                <input type="date" id="editExpDate" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label>Loại chi phí:</label>
+                <select id="editExpCategory" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+                    <option value="Tiền nhà">Tiền nhà (Mặt bằng)</option>
+                    <option value="Chi phí hành chính (Công an)">Chi phí hành chính (Công an)</option>
+                    <option value="Điện, nước, internet">Điện, nước, internet</option>
+                    <option value="Nhập đồ uống / Vật tư">Nhập đồ uống / Vật tư</option>
+                    <option value="Lương nhân viên">Lương nhân viên</option>
+                    <option value="Sửa chữa, bảo dưỡng">Sửa chữa, bảo dưỡng</option>
+                    <option value="Khác">Khác</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label>Số tiền (VNĐ):</label>
+                <input type="number" id="editExpAmount" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label>Ghi nhận vào tháng:</label>
+                <input type="month" id="editExpMonthTarget" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Mô tả chi tiết:</label>
+                <textarea id="editExpDescription" rows="2" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px; resize:none;"></textarea>
+            </div>
+            <button class="btn-submit" style="width:100%; padding:10px; background-color: #007bff;" onclick="submitEditExpense()">Lưu Thay Đổi</button>
+        </div>
+    </div>
+
+    <!-- MODAL LỊCH SỬ LƯU TRÚ CỦA KHÁCH -->
+    <div id="customerHistoryModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center;">
+        <div class="modal-content" style="background-color: #1e1e1e; color: #fff; padding: 25px; border-radius: 10px; width: 800px; max-width: 95%; max-height: 90vh; overflow-y: auto; position: relative;">
+            <span class="close-btn" onclick="closeCustomerHistoryModal()" style="position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #aaa;">&times;</span>
+            <h2 id="custHistoryTitle" style="margin-bottom: 15px; font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 8px; color: #00ff99;">Lịch sử lưu trú</h2>
+            
+            <div class="table-wrapper" style="max-height: 400px; overflow-y: auto; border: 1px solid #333; border-radius: 5px;">
+                <table class="history-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="background-color: #2a2a2a; color: #ffc107; position: sticky; top: 0;">
+                            <th style="padding: 10px;">Phòng</th>
+                            <th style="padding: 10px;">Loại giá</th>
+                            <th style="padding: 10px;">Giờ nhận</th>
+                            <th style="padding: 10px;">Giờ trả</th>
+                            <th style="padding: 10px; text-align: right;">Tổng tiền trả</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerHistoryBody">
+                        <!-- Render bằng JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SỬA THÔNG TIN KHÁCH HÀNG -->
+    <div id="editCustomerModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center;">
+        <div class="modal-content" style="background-color: #1e1e1e; color: #fff; padding: 25px; border-radius: 10px; width: 500px; max-width: 95%; position: relative;">
+            <span class="close-btn" onclick="closeEditCustomerModal()" style="position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #aaa;">&times;</span>
+            <h2 style="margin-bottom: 15px; font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 8px; color: #ffc107;">Sửa Thông Tin Khách Hàng</h2>
+            
+            <input type="hidden" id="editCustId">
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label>Họ và tên (*):</label>
+                <input type="text" id="editCustName" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label>Số CCCD / CMND:</label>
+                <input type="text" id="editCustCCCD" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label>Ngày sinh:</label>
+                <input type="date" id="editCustDob" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label>Địa chỉ chi tiết (Số nhà, đường...):</label>
+                <input type="text" id="editCustAddress" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+            </div>
+            <div class="form-row-group" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <input type="text" id="editCustWard" placeholder="Xã / Phường" style="flex:1; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+                <input type="text" id="editCustDistrict" placeholder="Quận / Huyện" style="flex:1; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <input type="text" id="editCustProvince" placeholder="Tỉnh / Thành phố" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
+            </div>
+            <button class="btn-submit" style="width:100%; padding:10px; background-color: #007bff;" onclick="submitEditCustomer()">Lưu Thay Đổi</button>
+        </div>
+    </div>
+</body>
+</html>

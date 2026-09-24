@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dọn Phòng - Vạn Hải Hotel</title>
+    <link rel="stylesheet" href="hk_style.css">
+</head>
+<body>
+    <div class="hk-header">
+        <h1>VẠN HẢI HOTEL</h1>
+        <p>Danh sách phòng chưa dọn</p>
+    </div>
+    
+    <div id="dirtyRoomsList" class="room-list">
+        <!-- Đang tải dữ liệu... -->
+    </div>
+
+    <!-- MODAL XÁC NHẬN DỌN PHÒNG -->
+    <div id="confirmCleanModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalRoomTitle">Phòng 101</h2>
+            <p>Phòng đã được dọn sạch sẽ?</p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeConfirmModal()">Chưa xong</button>
+                <button class="btn-confirm" onclick="executeCleanRoom()">Đã dọn sạch</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thư viện Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="hk_script.js"></script>
+</body>
+</html>

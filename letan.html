@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lễ tân - Vạn Hải Hotel</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- HEADER NGANG HÀNG: TITLE TRÁI - MENU PHẢI -->
+    <div class="header">
+        <h1 class="logo-title" onclick="switchTab('dashboard')">HOTEL VẠN HẢI</h1>
+        <div class="header-right">
+            <!-- BOX DOANH THU -->
+            <div class="revenue-summary">
+                <span>Hôm qua: <b id="revYesterday" style="color: #007bff;">0đ</b></span>
+                <span style="color: #555;">|</span>
+                <span>Hôm nay: <b id="revToday" style="color: #ffc107;">0đ</b></span>
+            </div>
+            <!-- MENU CHUYỂN TAB -->
+            <div class="tab-menu">
+                <button id="btnTabDashboard" class="tab-btn active" onclick="switchTab('dashboard')">Sơ đồ phòng</button>
+                <button id="btnTabHistory" class="tab-btn" onclick="switchTab('history')">Lịch sử</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 1: SƠ ĐỒ PHÒNG -->
+    <div id="tabDashboard" class="tab-content active-tab" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+        <div class="dashboard">
+            <div class="column" id="col-left"></div>
+            <div class="column" id="col-right"></div>
+        </div>
+    </div>
+
+    <!-- TAB 2: LỊCH SỬ TRẢ PHÒNG -->
+    <div id="tabHistory" class="tab-content" style="flex: 1; display: none; flex-direction: column; min-height: 0;">
+        <div class="history-container">
+            <div class="filter-section">
+                <input type="text" id="historySearch" placeholder="🔍 Tìm theo số phòng hoặc tên khách..." oninput="filterHistory()">
+                <select id="historyPriceFilter" onchange="filterHistory()">
+                    <option value="">Tất cả loại giá</option>
+                    <option value="hourly">Tính giờ</option>
+                    <option value="overnight">Qua đêm</option>
+                    <option value="daily">Ngày đêm</option>
+                </select>
+                <input type="date" id="historyDateFilter" onchange="filterHistory()">
+                <button class="tab-btn" style="background-color: #28a745; border-color: #28a745;" onclick="openInvoiceModal()">Xuất Hóa Đơn</button>
+                <button class="tab-btn" style="background-color: #dc3545; border-color: #dc3545;" onclick="openDeleteAdminModal()">Xóa đã chọn</button>
+            </div>
+            
+            <div class="table-wrapper">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)"></th>
+                            <th>Phòng</th>
+                            <th>Khách hàng</th>
+                            <th>Loại giá</th>
+                            <th>Giờ nhận</th>
+                            <th>Giờ trả</th>
+                            <th>Tiền phòng</th>
+                            <th>Tiền nước</th>
+                            <th>Phụ thu</th>
+                            <th>Giảm giá</th>
+                            <th>Tổng thanh toán</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- THANH HIỂN THỊ SỐ LƯỢNG BẢN GHI -->
+            <div class="record-count-bar">
+                Hiển thị: <b id="recordCount">0</b> bản ghi phù hợp
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NHẬN PHÒNG -->
+    <div id="checkinModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Nhận Phòng</h2>
+            
+            <div class="form-group">
+                <label><b>1. Loại giá:</b></label>
+                <select id="priceType" onchange="handlePriceTypeChange()">
+                    <option value="hourly">Tính giờ</option>
+                    <option value="overnight">Qua đêm</option>
+                    <option value="daily">Ngày đêm</option>
+                </select>
+            </div>
+
+            <div class="modal-row">
+                <div id="guestInfoSection" class="guest-section" style="display: none;">
+                    <h3>Thông tin khách hàng (Bắt buộc)</h3>
+                    <div class="form-group" style="position: relative; margin-bottom: 12px;">
+                        <input type="text" id="searchCustomerInput" placeholder="🔍 Tìm khách cũ theo Tên hoặc CCCD..." oninput="searchCustomer(this.value)">
+                        <div id="customerSuggestions" class="suggestions-box" style="display: none;"></div>
+                    </div>
+                    <div class="form-row-group">
+                        <input type="text" id="guestName" placeholder="Tên khách hàng (*)">
+                        <input type="text" id="guestCCCD" placeholder="Số CCCD">
+                    </div>
+                    <div class="form-row-group">
+                        <input type="date" id="guestDob" placeholder="Ngày sinh">
+                    </div>
+                    <div class="form-row-group">
+                        <input type="text" id="addressDetail" placeholder="Địa chỉ chi tiết (Số nhà, đường...)">
+                        <input type="text" id="ward" placeholder="Xã / Phường">
+                    </div>
+                    <div class="form-row-group">
+                        <input type="text" id="district" placeholder="Quận / Huyện">
+                        <input type="text" id="province" placeholder="Tỉnh / Thành phố">
+                    </div>
+                </div>
+
+                <div class="form-group drinks-container">
+                    <label><b>2. Đồ uống / Dịch vụ:</b></label>
+                    <div class="drinks-list">
+                        <div class="drink-item"><span>Nước suối (10k)</span><div class="counter"><button onclick="adjustDrink('nuoc_suoi', -1)">-</button><span id="count_nuoc_suoi">0</span><button onclick="adjustDrink('nuoc_suoi', 1)">+</button></div></div>
+                        <div class="drink-item"><span>Nước ngọt (20k)</span><div class="counter"><button onclick="adjustDrink('nuoc_ngot', -1)">-</button><span id="count_nuoc_ngot">0</span><button onclick="adjustDrink('nuoc_ngot', 1)">+</button></div></div>
+                        <div class="drink-item"><span>Bia (20k)</span><div class="counter"><button onclick="adjustDrink('bia', -1)">-</button><span id="count_bia">0</span><button onclick="adjustDrink('bia', 1)">+</button></div></div>
+                        <div class="drink-item"><span>Mì tôm (30k)</span><div class="counter"><button onclick="adjustDrink('mi_tom', -1)">-</button><span id="count_mi_tom">0</span><button onclick="adjustDrink('mi_tom', 1)">+</button></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-row">
+                <div class="form-group flex-col-stretch">
+                    <label><b>3. Tiền thanh toán trước (Cọc):</b></label>
+                    <div class="form-row-group" style="flex: 1; align-items: center; background: #2a2a2a; padding: 15px 10px; border-radius: 5px; border: 1px solid #444; margin-bottom: 0;">
+                        <input type="number" id="prepaidAmount" placeholder="Nhập số tiền..." value="0" style="flex: 2; margin-right: 15px; border: none; border-bottom: 1px solid #666; background: transparent; padding-left: 5px; color: #fff; font-size: 16px;">
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 14px;"><input type="radio" name="prepaidMethod" value="cash" checked style="width: auto;"> Tiền mặt</label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 14px;"><input type="radio" name="prepaidMethod" value="transfer" style="width: auto;"> Chuyển khoản</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group flex-col-stretch">
+                    <label><b>4. Ghi chú:</b></label>
+                    <textarea id="roomNotes" placeholder="Nhập ghi chú..." style="flex: 1; resize: none;"></textarea>
+                </div>
+            </div>
+
+            <button class="btn-submit" onclick="submitCheckIn()">Xác Nhận Nhận Phòng</button>
+        </div>
+    </div>
+
+    <!-- MODAL CẬP NHẬT PHÒNG -->
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeUpdateModal()">&times;</span>
+            <h2 id="updateModalTitle">Cập nhật phòng</h2>
+            
+            <div class="form-group">
+                <label><b>1. Giờ vào & Loại giá:</b></label>
+                <div class="payment-row">
+                    <input type="datetime-local" id="updateCheckInTime">
+                    <select id="updatePriceType" onchange="handleUpdatePriceTypeChange()">
+                        <option value="hourly">Tính giờ</option>
+                        <option value="overnight">Qua đêm</option>
+                        <option value="daily">Ngày đêm</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-row">
+                <div id="updateGuestInfoSection" class="guest-section" style="display: none">
+                    <!-- Header cùng hàng với nút Sửa -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="color: #00ff99; margin-bottom: 0;">Bổ sung thông tin khách hàng (Bắt buộc)</h3>
+                        <button id="btnEditGuest" class="tab-btn" style="padding: 4px 12px; font-size: 12px; margin: 0;" onclick="toggleEditGuestInfo()">Sửa</button>
+                    </div>
+
+                    <!-- Các input được set sẵn disabled -->
+                    <div class="form-group" style="position: relative; margin-bottom: 12px;">
+                        <input type="text" id="updateSearchCustomerInput" placeholder="🔍 Tìm khách cũ..." oninput="searchCustomerUpdate(this.value)" disabled>
+                        <div id="updateCustomerSuggestions" class="suggestions-box" style="display: none;"></div>
+                    </div>
+                    <div class="form-row-group">
+                        <input type="text" id="updateGuestName" placeholder="Tên khách hàng (*)" disabled>
+                        <input type="text" id="updateGuestCCCD" placeholder="Số CCCD" disabled>
+                    </div>
+                    <div class="form-row-group">
+                        <input type="date" id="updateGuestDob" placeholder="Ngày sinh" disabled>
+                    </div>
+                    <div class="form-row-group">
+                        <input type="text" id="updateAddressDetail" placeholder="Địa chỉ chi tiết (Số nhà, đường...)" disabled>
+                        <input type="text" id="updateWard" placeholder="Xã / Phường" disabled>
+                    </div>
+                    <div class="form-row-group">
+                        <input type="text" id="updateDistrict" placeholder="Quận / Huyện" disabled>
+                        <input type="text" id="updateProvince" placeholder="Tỉnh / Thành phố" disabled>
+                    </div>
+                </div>
+
+                <div class="form-group drinks-container">
+                    <label><b>2. Đồ uống / Dịch vụ:</b></label>
+                    <div class="drinks-list">
+                        <div class="drink-item"><span>Nước suối</span><div class="counter"><button onclick="adjustUpdateDrink('nuoc_suoi', -1)">-</button><span id="update_count_nuoc_suoi">0</span><button onclick="adjustUpdateDrink('nuoc_suoi', 1)">+</button></div></div>
+                        <div class="drink-item"><span>Nước ngọt</span><div class="counter"><button onclick="adjustUpdateDrink('nuoc_ngot', -1)">-</button><span id="update_count_nuoc_ngot">0</span><button onclick="adjustUpdateDrink('nuoc_ngot', 1)">+</button></div></div>
+                        <div class="drink-item"><span>Bia</span><div class="counter"><button onclick="adjustUpdateDrink('bia', -1)">-</button><span id="update_count_bia">0</span><button onclick="adjustUpdateDrink('bia', 1)">+</button></div></div>
+                        <div class="drink-item"><span>Mì tôm</span><div class="counter"><button onclick="adjustUpdateDrink('mi_tom', -1)">-</button><span id="update_count_mi_tom">0</span><button onclick="adjustUpdateDrink('mi_tom', 1)">+</button></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-row">
+                <div class="form-group flex-col-stretch">
+                    <label><b>3. Thu thêm tiền cọc (Nếu có):</b></label>
+                    <div class="form-row-group" style="flex: 1; align-items: center; background: #2a2a2a; padding: 15px 10px; border-radius: 5px; border: 1px solid #444; margin-bottom: 0;">
+                        <input type="number" id="updatePrepaidAmount" placeholder="Thêm số tiền..." value="0" style="flex: 2; margin-right: 15px; border: none; border-bottom: 1px solid #666; background: transparent; padding-left: 5px; color: #fff; font-size: 16px;">
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 14px;"><input type="radio" name="updatePrepaidMethod" value="cash" checked style="width: auto;"> Tiền mặt</label>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 14px;"><input type="radio" name="updatePrepaidMethod" value="transfer" style="width: auto;"> Chuyển khoản</label>
+                        </div>
+                    </div>
+                    <p style="font-size: 13px; color: #aaa; margin-top: 5px;">Tổng đã thu hiện tại: <span id="currentPrepaidDisplay" style="color: #00ff99; font-weight: bold;">0đ</span></p>
+                </div>
+                <div class="form-group flex-col-stretch">
+                    <label><b>4. Ghi chú:</b></label>
+                    <textarea id="updateRoomNotes" rows="2" style="flex: 1; resize: none;"></textarea>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn-submit" style="background-color: rgb(59, 131, 83);" onclick="openMoveRoomModal()">Chuyển Phòng</button>
+                <button class="btn-submit" style="background-color: #007bff;" onclick="submitUpdateRoom()">Lưu Thay Đổi</button>
+                <button class="btn-submit" style="background-color: #dc3545;" onclick="openCheckoutModal()">Thanh Toán</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CHỌN PHÒNG ĐÍCH ĐỂ CHUYỂN -->
+    <div id="moveRoomModal" class="modal">
+        <div class="modal-content" style="width: 400px;">
+            <span class="close-btn" onclick="closeMoveRoomModal()">&times;</span>
+            <h2>Chọn Phòng Trống Để Chuyển</h2>
+            <p style="font-size: 13px; color: #aaa; margin-bottom: 15px;">Danh sách các phòng đang sẵn sàng:</p>
+            
+            <div id="availableRoomsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
+                <!-- Danh sách phòng trống render bằng JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL THANH TOÁN -->
+    <div id="checkoutModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeCheckoutModal()">&times;</span>
+            <h2 id="checkoutModalTitle">Thanh Toán</h2>
+            
+            <div class="checkout-breakdown" id="checkoutBreakdown"></div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <label><b>Giảm giá / Phụ thu:</b></label>
+                <div class="payment-row">
+                    <input type="number" id="checkoutDiscount" placeholder="Tiền giảm giá..." oninput="calculateFinalTotal()">
+                    <input type="number" id="checkoutSurcharge" placeholder="Tiền phụ thu..." oninput="calculateFinalTotal()">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label><b>Hình thức thanh toán:</b></label>
+                <select id="checkoutPaymentMethod">
+                    <option value="cash">Tiền mặt</option>
+                    <option value="transfer">Chuyển khoản</option>
+                </select>
+            </div>
+
+            <div class="checkout-total">
+                <h3 style="color: #fff;">SỐ TIỀN CẦN THU: <span id="finalTotalAmount" style="color: #ffc107; font-size: 26px;">0đ</span></h3>
+            </div>
+
+            <button class="btn-submit" onclick="submitCheckout()">Xác Nhận & Trả Phòng</button>
+        </div>
+    </div>
+
+    <!-- MODAL XÓA BẢN GHI (BẢO MẬT ADMIN) -->
+    <div id="adminDeleteModal" class="modal">
+        <div class="modal-content" style="width: 400px;">
+            <span class="close-btn" onclick="closeAdminDeleteModal()">&times;</span>
+            <h2>Xác Nhận Xóa Bản Ghi</h2>
+            
+            <!-- Bước 1: Nhập mật khẩu -->
+            <div id="adminStepPassword" class="form-group" style="margin-top: 15px;">
+                <label>Nhập mật khẩu Admin:</label>
+                <input type="password" id="adminPasswordInput" placeholder="Nhập mật khẩu..." style="margin-bottom: 10px;">
+                <button class="btn-submit" style="background-color: #007bff;" onclick="verifyAdminPassword()">Xác Nhận Mật Khẩu</button>
+            </div>
+
+            <!-- Bước 2: Xác nhận số lượng xóa -->
+            <div id="adminStepConfirm" style="display: none; margin-top: 15px; text-align: center;">
+                <p id="deleteConfirmText" style="font-size: 16px; margin-bottom: 20px;"></p>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-submit" style="background-color: #dc3545; margin-top: 0;" onclick="executeDeleteBookings()">Có, Xóa Luôn</button>
+                    <button class="btn-submit" style="background-color: #6c757d; margin-top: 0;" onclick="closeAdminDeleteModal()">Không</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+
+    <!-- MODAL CÀI ĐẶT TRƯỚC KHI XUẤT HÓA ĐƠN EXCEL -->
+    <div id="invoiceSettingsModal" class="modal">
+        <div class="modal-content" style="width: 500px;">
+            <span class="close-btn" onclick="closeInvoiceModal()">&times;</span>
+            <h2>Cài đặt Hóa đơn Xuất Excel</h2>
+            
+            <div class="modal-row" style="margin-bottom: 15px;">
+                <div class="form-group">
+                    <label>Tên khách hàng / Đơn vị:</label>
+                    <input type="text" id="invoiceGuestName" placeholder="Nhập tên người mua hoặc công ty...">
+                </div>
+                <div class="form-group">
+                    <label>Ngôn ngữ:</label>
+                    <select id="invoiceLang">
+                        <option value="vi">Tiếng Việt</option>
+                        <option value="en">Tiếng Anh</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Mã số thuế (nếu có):</label>
+                <input type="text" id="invoiceMST" placeholder="Nhập mã số thuế...">
+            </div>
+
+            <div class="form-group">
+                <label>Địa chỉ:</label>
+                <input type="text" id="invoiceAddress" placeholder="Nhập địa chỉ công ty / khách hàng...">
+            </div>
+
+            <div class="modal-row" style="margin-bottom: 0;">
+                <div class="form-group">
+                    <label>Mức VAT (%):</label>
+                    <select id="invoiceVAT">
+                        <option value="0">0% (Không tính thuế)</option>
+                        <option value="8">8%</option>
+                        <option value="10">10%</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ngày xuất hóa đơn:</label>
+                    <input type="datetime-local" id="invoiceDate">
+                </div>
+            </div>
+
+            <button class="btn-submit" style="background-color: #28a745;" onclick="exportExcelInvoice()">Tải xuống File Excel</button>
+        </div>
+    </div>
+</body>
+</html>
