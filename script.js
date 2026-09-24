@@ -79,10 +79,8 @@ function calculateRoomPricing(room, checkInStr, pType, checkOutDate) {
     const checkIn = new Date(checkInStr);
     const checkOut = checkOutDate || new Date();
 
-    // Lấy giá trực tiếp cho từng phòng. 
-    // Fallback giá 80k/200k/300k nếu phòng đó lỡ quên chưa set để tránh lỗi NaN
+    // Lấy giá động cho từng phòng. Fallback giá chung nếu phòng chưa cài đặt
     const roomCfg = roomPricingConfig[room.name] || {};
-    
     let baseFirstHour = roomCfg.first_hour ? Number(roomCfg.first_hour) : 80000;
     let baseNightPrice = roomCfg.overnight ? Number(roomCfg.overnight) : 200000;
     let baseDayNightPrice = roomCfg.daily ? Number(roomCfg.daily) : 300000;
@@ -91,10 +89,12 @@ function calculateRoomPricing(room, checkInStr, pType, checkOutDate) {
     let breakdownHTML = '';
 
     if (pType === 'hourly') {
-        let diffMinutes = Math.floor((checkOut - checkIn) / (1000 * 60));
-        let hours = Math.floor(diffMinutes / 60);
-        if (diffMinutes % 60 > 15) hours += 1;
-        if (hours < 1) hours = 1;
+        let diffMins = Math.floor((checkOut - checkIn) / 60000);
+        let hours = 0;
+        if (diffMins > 15) { // Ân hạn 15 phút
+            hours = Math.floor((diffMins - 15) / 60) + 1;
+        }
+        if (hours < 1) hours = 1; // Tối thiểu 1h
 
         if (hours === 1) {
             roomPrice = baseFirstHour;
@@ -109,17 +109,18 @@ function calculateRoomPricing(room, checkInStr, pType, checkOutDate) {
     } else {
         let inHour = checkIn.getHours();
 
+        // 1. TÍNH TIỀN GỐC LÚC NHẬN PHÒNG & PHỤ THU VÀO SỚM
         if (pType === 'daily') {
             if (inHour >= 0 && inHour < 12) {
                 let target12h = new Date(checkIn);
                 target12h.setHours(12, 0, 0, 0);
                 let earlyHours = Math.ceil((target12h - checkIn) / (1000 * 60 * 60));
                 roomPrice = baseDayNightPrice + (earlyHours * 20000);
-                breakdownHTML += `<div class="checkout-row"><span>Ngày đêm:</span> <b>${baseDayNightPrice.toLocaleString()}đ</b></div>`;
+                breakdownHTML += `<div class="checkout-row"><span>Ngày đêm (Gốc):</span> <b>${baseDayNightPrice.toLocaleString()}đ</b></div>`;
                 breakdownHTML += `<div class="checkout-row"><span>Phụ thu nhận sớm (${earlyHours}h):</span> <b>+ ${(earlyHours * 20000).toLocaleString()}đ</b></div>`;
             } else {
                 roomPrice = baseDayNightPrice;
-                breakdownHTML += `<div class="checkout-row"><span>Ngày đêm chuẩn:</span> <b>${roomPrice.toLocaleString()}đ</b></div>`;
+                breakdownHTML += `<div class="checkout-row"><span>Ngày đêm (Gốc):</span> <b>${roomPrice.toLocaleString()}đ</b></div>`;
             }
         } else if (pType === 'overnight') {
             if (inHour >= 12 && inHour < 18) {
@@ -127,39 +128,59 @@ function calculateRoomPricing(room, checkInStr, pType, checkOutDate) {
                 target18h.setHours(18, 0, 0, 0);
                 let earlyHours = Math.ceil((target18h - checkIn) / (1000 * 60 * 60));
                 roomPrice = baseNightPrice + (earlyHours * 20000);
-                breakdownHTML += `<div class="checkout-row"><span>Qua đêm:</span> <b>${baseNightPrice.toLocaleString()}đ</b></div>`;
+                breakdownHTML += `<div class="checkout-row"><span>Qua đêm (Gốc):</span> <b>${baseNightPrice.toLocaleString()}đ</b></div>`;
                 breakdownHTML += `<div class="checkout-row"><span>Phụ thu nhận sớm (${earlyHours}h):</span> <b>+ ${(earlyHours * 20000).toLocaleString()}đ</b></div>`;
             } else {
                 roomPrice = baseNightPrice;
-                breakdownHTML += `<div class="checkout-row"><span>Qua đêm chuẩn:</span> <b>${roomPrice.toLocaleString()}đ</b></div>`;
+                breakdownHTML += `<div class="checkout-row"><span>Qua đêm (Gốc):</span> <b>${roomPrice.toLocaleString()}đ</b></div>`;
             }
         }
 
+        // 2. XÁC ĐỊNH MỐC TRẢ PHÒNG CHUẨN ĐẦU TIÊN
         let standardCheckout = new Date(checkIn);
         if (pType === 'overnight' && inHour >= 0 && inHour < 12) {
-            standardCheckout.setHours(12, 0, 0, 0); 
+            standardCheckout.setHours(12, 0, 0, 0); // Nhận sau 0h sáng -> Trả 12h trưa cùng ngày
         } else {
             standardCheckout.setDate(standardCheckout.getDate() + 1);
-            standardCheckout.setHours(12, 0, 0, 0);
+            standardCheckout.setHours(12, 0, 0, 0); // Trả 12h trưa hôm sau
         }
 
-        if (checkOut > standardCheckout) {
-            let outHour = checkOut.getHours();
-            if (outHour >= 20) {
-                roomPrice += baseDayNightPrice;
-                breakdownHTML += `<div class="checkout-row" style="color: #ffc107;"><span>Phụ thu trả muộn (>20h):</span> <b>+ ${baseDayNightPrice.toLocaleString()}đ</b></div>`;
-            } else {
-                let lofiMinutes = Math.floor((checkOut - standardCheckout) / (1000 * 60));
-                let lofiHours = Math.floor(lofiMinutes / 60);
-                if (lofiMinutes % 60 > 15) lofiHours += 1;
-                if (lofiHours < 1) lofiHours = 1;
+        // 3. VÒNG LẶP TÍNH PHỤ THU QUÁ GIỜ HOẶC CỘNG DỒN NGÀY
+        let extraDays = 0;
+        let lateHours = 0;
 
-                let lofiFee = lofiHours * 20000;
-                roomPrice += lofiFee;
-                breakdownHTML += `<div class="checkout-row" style="color: #ffc107;"><span>Phụ thu trả muộn (${lofiHours}h):</span> <b>+ ${lofiFee.toLocaleString()}đ</b></div>`;
+        while (checkOut > standardCheckout) {
+            let cutoff20h = new Date(standardCheckout);
+            cutoff20h.setHours(20, 0, 0, 0); // Mốc 8h tối của ngày standardCheckout
+
+            if (checkOut >= cutoff20h) {
+                // Đã qua 8h tối -> Chốt thành 1 ngày đêm, tiếp tục xét vòng lặp
+                extraDays++;
+                standardCheckout.setDate(standardCheckout.getDate() + 1); // Dời mốc chuẩn sang 12h trưa hôm sau
+            } else {
+                // Trả trước 8h tối -> Tính lố giờ (ân hạn 15 phút)
+                let diffMins = Math.floor((checkOut - standardCheckout) / 60000);
+                if (diffMins > 15) {
+                    lateHours = Math.floor((diffMins - 15) / 60) + 1;
+                }
+                break; // Xử lý xong, thoát vòng lặp
             }
         }
+
+        // 4. ÁP GIÁ & IN RA HÓA ĐƠN
+        if (extraDays > 0) {
+            let extraDaysPrice = extraDays * baseDayNightPrice; // Tính bằng giá Ngày đêm
+            roomPrice += extraDaysPrice;
+            breakdownHTML += `<div class="checkout-row" style="color: #ffc107;"><span>Phòng ở thêm (${extraDays} ngày):</span> <b>+ ${extraDaysPrice.toLocaleString()}đ</b></div>`;
+        }
+
+        if (lateHours > 0) {
+            let lateFee = lateHours * 20000;
+            roomPrice += lateFee;
+            breakdownHTML += `<div class="checkout-row" style="color: #ffc107;"><span>Phụ thu trả muộn (${lateHours}h):</span> <b>+ ${lateFee.toLocaleString()}đ</b></div>`;
+        }
     }
+    
     return { roomPrice, breakdownHTML };
 }
 
