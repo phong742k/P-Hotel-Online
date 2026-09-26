@@ -473,7 +473,7 @@ function updateDrinksUI() {
 
 async function submitCheckIn() {
     const priceType = document.getElementById('priceType').value;
-    const amount = parseFloat(document.getElementById('prepaidAmount').value) || 0;
+    const amount = (parseFloat(document.getElementById('prepaidAmount').value) || 0) * 1000;
     const method = document.querySelector('input[name="prepaidMethod"]:checked').value;
     const cash = method === 'cash' ? amount : 0;
     const transfer = method === 'transfer' ? amount : 0;
@@ -592,7 +592,7 @@ function adjustUpdateDrink(key, delta) {
 
 async function submitUpdateRoom() {
     const priceType = document.getElementById('updatePriceType').value;
-    const amount = parseFloat(document.getElementById('updatePrepaidAmount').value) || 0;
+    const amount = (parseFloat(document.getElementById('updatePrepaidAmount').value) || 0) * 1000;
     const method = document.querySelector('input[name="updatePrepaidMethod"]:checked').value;
     
     const newCash = (parseFloat(currentActiveBooking.prepaid_cash) || 0) + (method === 'cash' ? amount : 0);
@@ -671,8 +671,8 @@ function openCheckoutModal() {
 }
 
 function calculateFinalTotal() {
-    let discount = parseFloat(document.getElementById('checkoutDiscount').value) || 0;
-    let surcharge = parseFloat(document.getElementById('checkoutSurcharge').value) || 0;
+    let discount = (parseFloat(document.getElementById('checkoutDiscount').value) || 0) * 1000;
+    let surcharge = (parseFloat(document.getElementById('checkoutSurcharge').value) || 0) * 1000;
 
     // Công thức tính số tiền CÒN LẠI cần thu lúc ra về
     let finalTotal = window.calculatedRoomPrice + window.calculatedDrinkPrice + surcharge - discount - window.calculatedPrepaid;
@@ -685,8 +685,8 @@ function closeCheckoutModal() { document.getElementById('checkoutModal').style.d
 
 async function submitCheckout() {
     try {
-        const discountVal = parseFloat(document.getElementById('checkoutDiscount').value) || 0;
-        const surchargeVal = parseFloat(document.getElementById('checkoutSurcharge').value) || 0;
+        const discountVal = (parseFloat(document.getElementById('checkoutDiscount').value) || 0) * 1000;
+        const surchargeVal = (parseFloat(document.getElementById('checkoutSurcharge').value) || 0) * 1000;
         
         // Bốc số tiền khách cần trả CÒN LẠI lúc checkout
         let finalTotalText = document.getElementById('finalTotalAmount').innerText;

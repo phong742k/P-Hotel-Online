@@ -139,7 +139,10 @@
                 <div class="form-group flex-col-stretch">
                     <label><b>3. Tiền thanh toán trước (Cọc):</b></label>
                     <div class="form-row-group" style="flex: 1; align-items: center; background: #2a2a2a; padding: 15px 10px; border-radius: 5px; border: 1px solid #444; margin-bottom: 0;">
-                        <input type="number" id="prepaidAmount" placeholder="Nhập số tiền..." value="0" style="flex: 2; margin-right: 15px; border: none; border-bottom: 1px solid #666; background: transparent; padding-left: 5px; color: #fff; font-size: 16px;">
+                        <div style="display: flex; align-items: center; flex: 2; margin-right: 15px; border-bottom: 1px solid #666;">
+                            <input type="number" id="prepaidAmount" placeholder="VD: 200" value="0" style="flex: 1; border: none; background: transparent; padding-left: 5px; color: #fff; font-size: 16px; outline: none;">
+                            <span style="color: #ffc107; font-weight: bold; font-size: 16px;">.000đ</span>
+                        </div>
                         <div style="display: flex; flex-direction: column; gap: 10px;">
                             <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 14px;"><input type="radio" name="prepaidMethod" value="cash" checked style="width: auto;"> Tiền mặt</label>
                             <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 14px;"><input type="radio" name="prepaidMethod" value="transfer" style="width: auto;"> Chuyển khoản</label>
@@ -219,7 +222,10 @@
                 <div class="form-group flex-col-stretch">
                     <label><b>3. Thu thêm tiền cọc (Nếu có):</b></label>
                     <div class="form-row-group" style="flex: 1; align-items: center; background: #2a2a2a; padding: 15px 10px; border-radius: 5px; border: 1px solid #444; margin-bottom: 0;">
-                        <input type="number" id="updatePrepaidAmount" placeholder="Thêm số tiền..." value="0" style="flex: 2; margin-right: 15px; border: none; border-bottom: 1px solid #666; background: transparent; padding-left: 5px; color: #fff; font-size: 16px;">
+                        <div style="display: flex; align-items: center; flex: 2; margin-right: 15px; border-bottom: 1px solid #666;">
+                            <input type="number" id="updatePrepaidAmount" placeholder="VD: 150" value="0" style="flex: 1; border: none; background: transparent; padding-left: 5px; color: #fff; font-size: 16px; outline: none;">
+                            <span style="color: #ffc107; font-weight: bold; font-size: 16px;">.000đ</span>
+                        </div>
                         <div style="display: flex; flex-direction: column; gap: 10px;">
                             <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 14px;"><input type="radio" name="updatePrepaidMethod" value="cash" checked style="width: auto;"> Tiền mặt</label>
                             <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 14px;"><input type="radio" name="updatePrepaidMethod" value="transfer" style="width: auto;"> Chuyển khoản</label>
@@ -265,8 +271,14 @@
             <div class="form-group" style="margin-top: 15px;">
                 <label><b>Giảm giá / Phụ thu:</b></label>
                 <div class="payment-row">
-                    <input type="number" id="checkoutDiscount" placeholder="Tiền giảm giá..." oninput="calculateFinalTotal()">
-                    <input type="number" id="checkoutSurcharge" placeholder="Tiền phụ thu..." oninput="calculateFinalTotal()">
+                    <div style="display: flex; align-items: center; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; flex: 1;">
+                        <input type="number" id="checkoutDiscount" placeholder="Giảm giá (VD: 50)" style="border: none; background: transparent; width: 100%; color: #fff; padding: 8px; outline: none;" oninput="calculateFinalTotal()">
+                        <span style="color: #ffc107; font-weight: bold; padding-right: 10px;">.000đ</span>
+                    </div>
+                    <div style="display: flex; align-items: center; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; flex: 1;">
+                        <input type="number" id="checkoutSurcharge" placeholder="Phụ thu (VD: 100)" style="border: none; background: transparent; width: 100%; color: #fff; padding: 8px; outline: none;" oninput="calculateFinalTotal()">
+                        <span style="color: #ffc107; font-weight: bold; padding-right: 10px;">.000đ</span>
+                    </div>
                 </div>
             </div>
 
