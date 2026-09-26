@@ -638,6 +638,7 @@ async function submitUpdateRoom() {
 function openCheckoutModal() {
     closeUpdateModal();
     document.getElementById('checkoutModalTitle').innerText = `Thanh toán phòng`;
+    document.getElementById('checkoutPaymentMethod').value = 'cash';
 
     const room = roomsData.find(r => r.id === selectedRoomId);
     let pricing = calculateRoomPricing(room, currentActiveBooking.check_in_time, currentActiveBooking.price_type, new Date());
