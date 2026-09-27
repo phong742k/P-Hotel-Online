@@ -57,7 +57,11 @@ async function fetchRoomsFromSupabase() {
         if (error) throw error;
 
         roomsData = rooms.map(room => {
-            const activeBooking = room.bookings ? room.bookings.find(b => b.status === 'active') : null;
+            let activeBooking = null;
+            if (room.bookings) {
+                const activeList = room.bookings.filter(b => b.status === 'active').sort((a, b) => new Date(b.check_in_time) - new Date(a.check_in_time));
+                activeBooking = activeList.length > 0 ? activeList[0] : null;
+            }
             let floorName = 'Tầng G';
             if (room.room_name.startsWith('1')) floorName = 'Tầng 1';
             else if (room.room_name.startsWith('2')) floorName = 'Tầng 2';

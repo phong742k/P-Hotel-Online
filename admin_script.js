@@ -1011,7 +1011,11 @@ async function fetchAdminRoomStatus() {
                 colHtml += `<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;">`;
 
                 floorRooms.forEach(room => {
-                    let activeBooking = room.bookings ? room.bookings.find(b => b.status === 'active') : null;
+                    let activeBooking = null;
+                    if (room.bookings) {
+                        const activeList = room.bookings.filter(b => b.status === 'active').sort((a, b) => new Date(b.check_in_time) - new Date(a.check_in_time));
+                        activeBooking = activeList.length > 0 ? activeList[0] : null;
+                    }
                     let bgClass = room.status === 'trong' ? 'bg-trong' : (room.status === 'chuadon' ? 'bg-chuadon' : 'bg-cokhach');
                     
                     if (activeBooking) {
