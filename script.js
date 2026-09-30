@@ -218,12 +218,19 @@ function createRoomCard(room) {
         let tempTotal = pricing.roomPrice + totalDrinkPrice;
         let tempPriceStr = tempTotal.toLocaleString() + 'đ';
 
+        // Xử lý hiển thị ghi chú (Nếu có ghi chú thì mới render ra)
+        let notesHTML = '';
+        if (room.activeBooking.notes && room.activeBooking.notes.trim() !== '') {
+            notesHTML = `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.3); font-size: 13px; font-style: italic; color: #ffc107; line-height: 1.4; word-wrap: break-word;">📝 ${room.activeBooking.notes}</div>`;
+        }
+
         innerHTML += `
             <div class="room-info">
                 <div><b>Loại:</b> ${typeName}</div>
                 <div><b>Vào:</b> ${checkInTime}</div>
                 <div><b>Tạm tính:</b> <span style="color: #fff15a; font-size: 16px; font-weight: bold;">${tempPriceStr}</span></div>
                 <div><b>Đã thu:</b> ${totalPrepaid.toLocaleString()}đ</div>
+                ${notesHTML}
             </div>`;
     }
     return `<div class="room-card ${cardClass}" onclick="handleRoomClick(${room.id}, '${room.name}', '${room.status}')">${innerHTML}</div>`;
