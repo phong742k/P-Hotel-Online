@@ -14,6 +14,7 @@ function switchAdminTab(tabId, element) {
     
     if (tabId === 'tabRevenue') fetchRevenueData();
     if (tabId === 'tabRoomStatus') fetchAdminRoomStatus();
+    if (tabId === 'tabLiving') fetchLivingData();
 }
 
 // Hàm format tiền
@@ -163,6 +164,18 @@ async function fetchRevenueData() {
             prevSurcharge += sur;
             prevDiscount += disc;
         });
+        // --- TÍNH TỔNG CHI PHÍ & SINH HOẠT VÀO LỢI NHUẬN ---
+        const { data: expData } = await supabaseClient.from('expenses').select('amount').gte('expense_date', startVal).lte('expense_date', endVal);
+        let totalExp = 0;
+        if (expData) expData.forEach(e => totalExp += Number(e.amount) || 0);
+
+        const { data: liveData } = await supabaseClient.from('living_expenses').select('amount').gte('date', startVal).lte('date', endVal);
+        let totalLive = 0;
+        if (liveData) liveData.forEach(e => totalLive += Number(e.amount) || 0);
+
+        document.getElementById('valTotalExp').innerText = fmtMoney(totalExp);
+        document.getElementById('valTotalLiveExp').innerText = fmtMoney(totalLive);
+        document.getElementById('valProfit').innerText = fmtMoney(curTotal - totalExp - totalLive);
 
         // Render Cards
         document.getElementById('valTotalRev').innerText = fmtMoney(curTotal);
@@ -247,10 +260,15 @@ window.addEventListener('DOMContentLoaded', () => {
     const yearMonth = now.toISOString().slice(0, 7); // 'YYYY-MM'
     const todayStr = now.toISOString().split('T')[0];
 
+    // Form chi phí cố định
     document.getElementById('expDate').value = todayStr;
     document.getElementById('expMonthTarget').value = yearMonth;
     document.getElementById('filterStatsMonth').value = yearMonth;
     document.getElementById('filterListMonth').value = yearMonth;
+
+    // Bổ sung cho form sinh hoạt
+    if(document.getElementById('liveDate')) document.getElementById('liveDate').value = todayStr;
+    if(document.getElementById('filterLiveMonth')) document.getElementById('filterLiveMonth').value = yearMonth;
 
     // Load data chi phí lần đầu
     fetchExpenseData();
@@ -1090,4 +1108,100 @@ function showAdminRoomDetails(room, booking) {
     
     document.getElementById('viewGuestInfo').innerHTML = infoHtml;
     document.getElementById('viewGuestModal').style.display = 'flex';
+}
+
+// =====================================================================
+// QUẢN LÝ TIỀN ĂN & CHI TIÊU SINH HOẠT
+// =====================================================================
+
+async function submitLivingExpense() {
+    const date = document.getElementById('liveDate').value;
+    const cat = document.getElementById('liveCategory').value;
+    // Nhân 1000 để dùng giao diện rút gọn (gõ 50 = 50.000đ)
+    const amt = (parseFloat(document.getElementById('liveAmount').value) || 0) * 1000; 
+    const desc = document.getElementById('liveDesc').value;
+
+    if (!date || amt <= 0) { alert('Vui lòng nhập ngày và số tiền hợp lệ!'); return; }
+
+    try {
+        const { error } = await supabaseClient.from('living_expenses').insert([{
+            date: date, category: cat, amount: amt, description: desc
+        }]);
+        if (error) throw error;
+        
+        alert('Ghi nhận chi tiêu thành công!');
+        document.getElementById('liveAmount').value = '';
+        document.getElementById('liveDesc').value = '';
+        fetchLivingData();
+        // Cập nhật luôn cả lợi nhuận bên tab doanh thu nếu đang cùng mốc thời gian
+        fetchRevenueData(); 
+    } catch (err) {
+        alert('Lỗi ghi nhận: ' + err.message);
+    }
+}
+
+async function fetchLivingData() {
+    const month = document.getElementById('filterLiveMonth').value; // 'YYYY-MM'
+    const catFilter = document.getElementById('filterLiveCat').value;
+
+    if (!month) return;
+    const startOfMonth = `${month}-01`;
+    // Tính ngày cuối cùng của tháng để lọc cho chuẩn
+    const [y, m] = month.split('-');
+    const endOfMonth = new Date(y, m, 0).toISOString().split('T')[0];
+
+    try {
+        let query = supabaseClient.from('living_expenses')
+            .select('*')
+            .gte('date', startOfMonth)
+            .lte('date', endOfMonth)
+            .order('date', { ascending: false });
+
+        if (catFilter !== 'all') {
+            query = query.eq('category', catFilter);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        let total = 0;
+        let html = '';
+
+        if (data.length === 0) {
+            html = `<tr><td colspan="5" style="text-align:center; color:#888; padding: 20px;">Tháng này chưa có dữ liệu chi tiêu.</td></tr>`;
+        } else {
+            data.forEach(item => {
+                total += Number(item.amount) || 0;
+                const fDate = new Date(item.date).toLocaleDateString('vi-VN');
+                html += `
+                    <tr style="border-bottom: 1px solid #333;">
+                        <td style="padding: 12px 10px;">${fDate}</td>
+                        <td style="padding: 12px 10px; color: #ffc107;"><b>${item.category}</b></td>
+                        <td style="padding: 12px 10px; color: #ccc;">${item.description || '-'}</td>
+                        <td style="padding: 12px 10px; text-align: right; color: #ff8000; font-weight: bold;">${fmtMoney(item.amount)}</td>
+                        <td style="padding: 12px 10px; text-align: center;">
+                            <button style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold;" onclick="deleteLivingExpense(${item.id})">Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        document.getElementById('totalLiveVal').innerText = fmtMoney(total);
+        document.getElementById('livingListBody').innerHTML = html;
+    } catch (err) {
+        console.error('Lỗi tải dữ liệu sinh hoạt:', err.message);
+    }
+}
+
+async function deleteLivingExpense(id) {
+    if (!confirm('Bạn có chắc chắn muốn xóa khoản chi này không? (Số tiền sẽ được cộng lại vào lợi nhuận)')) return;
+    try {
+        const { error } = await supabaseClient.from('living_expenses').delete().eq('id', id);
+        if (error) throw error;
+        
+        fetchLivingData();
+        fetchRevenueData(); // Cập nhật lại lợi nhuận ngay lập tức
+    } catch (err) {
+        alert('Lỗi xóa: ' + err.message);
+    }
 }

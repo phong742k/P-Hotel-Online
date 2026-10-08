@@ -18,32 +18,20 @@
                 <img src="https://wohnxhepcaqxyzrgjbrj.supabase.co/storage/v1/object/public/Image/PHotelOnline-01.png" alt="Logo Vạn Hải" style="max-width: 100%; height: auto; max-height: 45px;">
             </div>
             <ul class="nav-menu">
-                <li class="nav-item active" onclick="switchAdminTab('tabRoomStatus', this)" title="Trạng thái phòng">🛏️ <span class="nav-text">Trạng thái phòng</span></li>
                 <li class="nav-item" onclick="switchAdminTab('tabRevenue', this)" title="Quản lý doanh thu">📊 <span class="nav-text">Quản lý doanh thu</span></li>
                 <li class="nav-item" onclick="switchAdminTab('tabExpense', this)" title="Ghi chép chi phí">💸 <span class="nav-text">Ghi chép chi phí</span></li>
                 <li class="nav-item" onclick="switchAdminTab('tabCustomer', this)" title="Quản lý khách hàng">👥 <span class="nav-text">Quản lý khách hàng</span></li>
+                <li class="nav-item" onclick="switchAdminTab('tabLiving', this)" title="Tiền ăn & Sinh hoạt">🍽️ <span class="nav-text">Tiền ăn & Sinh hoạt</span></li>
                 <li class="nav-item" onclick="switchAdminTab('tabSettings', this)" title="Cài đặt">⚙️ <span class="nav-text">Cài đặt (Giá)</span></li>
             </ul>
         </div>
 
         <!-- MAIN CONTENT -->
         <div class="main-content">
-            <!-- TAB 0: TRẠNG THÁI PHÒNG (QUẢN LÝ TỔNG QUAN) -->
-            <div id="tabRoomStatus" class="admin-tab active-tab">
-                <div class="header-action">
-                    <h2>Hiện Trạng Phòng (Dành cho Quản lý)</h2>
-                    <button class="btn-submit" style="margin-top:0; padding: 10px 20px; background-color: #17a2b8;" onclick="fetchAdminRoomStatus()">🔄 Làm mới</button>
-                </div>
-                
-                <!-- Lưới hiển thị phòng tự động co giãn -->
-                <div id="adminRoomGrid" class="admin-room-grid">
-                    <!-- Javascript sẽ đổ các phòng xanh/đỏ/xám vào đây -->
-                </div>
-            </div>
             <!-- TAB 1: DOANH THU -->
-            <div id="tabRevenue" class="admin-tab">
+            <div id="tabRevenue" class="admin-tab active-tab">
                 <div class="header-action">
-                    <h2>Báo Cáo Doanh Thu</h2>
+                    <h2>Thống kê</h2>
                     <div class="filter-box">
                         <button class="btn-quick" onclick="setQuickFilter('7days')">7 ngày qua</button>
                         <button class="btn-quick" onclick="setQuickFilter('thisMonth')">Tháng này</button>
@@ -82,7 +70,21 @@
                         <div class="comparison" id="compDiscount">--</div>
                     </div>
                 </div>
-
+                <!-- CỤM 3 Ô MỚI XUỐNG DÒNG ĐÂY -->
+                <div class="dashboard-cards" style="margin-top: 15px; border-top: 1px dashed #444; padding-top: 20px;">
+                    <div class="card" style="background-color: #2a1a1a; border-color: #ff4d4d;">
+                        <h3>Tổng Chi Cố Định</h3>
+                        <div class="value" id="valTotalExp" style="color: #ff4d4d;">0đ</div>
+                    </div>
+                    <div class="card" style="background-color: #2a2a1a; border-color: #ffc107;">
+                        <h3>Chi Phí Sinh Hoạt</h3>
+                        <div class="value" id="valTotalLiveExp" style="color: #ffc107;">0đ</div>
+                    </div>
+                    <div class="card" style="background-color: #1a2a1a; border-color: #00ff99;">
+                        <h3>LỢI NHUẬN TẠM TÍNH</h3>
+                        <div class="value" id="valProfit" style="color: #00ff99;">0đ</div>
+                    </div>
+                </div>
                 <!-- CHART -->
                 <div class="chart-container">
                     <canvas id="revenueChart"></canvas>
@@ -92,7 +94,7 @@
             <!-- TAB 2: CHI PHÍ -->
             <div id="tabExpense" class="admin-tab">
                 <div class="header-action">
-                    <h2>Quản Lý Chi Phí Khách Sạn</h2>
+                    <h2>Quản lý chi phí</h2>
                 </div>
 
                 <!-- KHU VỰC 2 CỘT: FORM NHẬP + THỐNG KÊ -->
@@ -197,7 +199,7 @@
             <!-- TAB 3: KHÁCH HÀNG -->
             <div id="tabCustomer" class="admin-tab">
                 <div class="header-action">
-                    <h2>Quản Lý Khách Hàng & Lịch Sử Lưu Trú</h2>
+                    <h2>Khách hàng</h2>
                     <button class="btn-submit" style="margin-top:0; padding: 10px 20px; background-color: #28a745;" onclick="openAddCustomerModal()">+ Thêm Khách Hàng</button>
                 </div>
 
@@ -245,7 +247,7 @@
             <!-- TAB 4: CÀI ĐẶT (GIÁ) -->
             <div id="tabSettings" class="admin-tab">
                 <div class="header-action">
-                    <h2>Cài Đặt Giá Phòng & Dịch Vụ</h2>
+                    <h2>Cài đặt</h2>
                     <button class="btn-submit" style="margin-top:0; padding: 10px 20px; background-color: #28a745;" onclick="saveAllSettings()">Lưu Tất Cả Thay Đổi</button>
                 </div>
 
@@ -295,7 +297,84 @@
 
                 </div>
             </div>
+             <!-- TAB 5: TIỀN ĂN & SINH HOẠT -->
+            <div id="tabLiving" class="admin-tab">
+                <div class="header-action">
+                    <h2>Tiền ăn, sinh hoạt</h2>
+                </div>
+                
+                <div class="expense-top-grid">
+                    <!-- BOX 1: FORM NHẬP -->
+                    <div class="expense-form-box">
+                        <h3>Thêm Khoản Chi Mới</h3>
+                        <div class="form-group">
+                            <label>Ngày chi:</label>
+                            <input type="date" id="liveDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Loại chi phí:</label>
+                            <select id="liveCategory">
+                                <option value="Tiền ăn">Tiền ăn</option>
+                                <option value="Xăng xe">Xăng xe</option>
+                                <option value="Chi khác">Chi khác</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Số tiền (VNĐ):</label>
+                            <div style="display: flex; align-items: center; background: #2a2a2a; border: 1px solid #444; border-radius: 4px;">
+                                <input type="number" id="liveAmount" placeholder="VD: 50" style="flex: 1; border: none; background: transparent; color: #fff; padding: 10px; outline: none;">
+                                <span style="color: #ffc107; font-weight: bold; padding-right: 15px;">.000đ</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Mô tả chi tiết (Tùy chọn):</label>
+                            <input type="text" id="liveDesc" placeholder="Hôm nay ăn gì, đi đâu..." style="width:100%; padding:10px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:5px; outline:none;">
+                        </div>
+                        <button class="btn-submit" style="width:100%; padding:12px; background-color: #ff8000;" onclick="submitLivingExpense()">Ghi Nhận Khoản Chi</button>
+                    </div>
 
+                    <!-- BOX 2: THỐNG KÊ & LỌC -->
+                    <div class="expense-stats-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3>Tổng chi sinh hoạt</h3>
+                            <input type="month" id="filterLiveMonth" onchange="fetchLivingData()" style="background:#2a2a2a; color:#fff; border:1px solid #444; padding:5px 10px; border-radius:4px;">
+                        </div>
+                        <div class="total-expense-banner" style="border-color: #ff8000;">
+                            <span>Tổng chi:</span> <b id="totalLiveVal" style="color: #ff8000; font-size: 22px;">0đ</b>
+                        </div>
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label style="color: #aaa; font-size: 14px;">Lọc xem theo loại:</label>
+                            <select id="filterLiveCat" onchange="fetchLivingData()" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px; margin-top: 5px;">
+                                <option value="all">Tất cả</option>
+                                <option value="Tiền ăn">Tiền ăn</option>
+                                <option value="Xăng xe">Xăng xe</option>
+                                <option value="Chi khác">Chi khác</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOX 3: BẢNG DANH SÁCH -->
+                <div class="expense-list-box" style="margin-top: 25px; background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333;">
+                    <h3 style="margin-bottom: 15px; color: #ffc107;">Danh Sách Đã Ghi Nhận</h3>
+                    <div class="table-wrapper" style="max-height: 350px; overflow-y: auto;">
+                        <table class="expense-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead>
+                                <tr style="background: #2a2a2a; color: #aaa; position: sticky; top: 0;">
+                                    <th style="padding: 10px;">Ngày</th>
+                                    <th style="padding: 10px;">Loại</th>
+                                    <th style="padding: 10px;">Mô tả</th>
+                                    <th style="padding: 10px; text-align: right;">Số tiền</th>
+                                    <th style="padding: 10px; text-align: center;">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="livingListBody">
+                                <!-- Render bằng JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -398,18 +477,6 @@
                 <input type="text" id="editCustProvince" placeholder="Tỉnh / Thành phố" style="width:100%; padding:8px; background:#2a2a2a; border:1px solid #444; color:#fff; border-radius:4px;">
             </div>
             <button class="btn-submit" style="width:100%; padding:10px; background-color: #007bff;" onclick="submitEditCustomer()">Lưu Thay Đổi</button>
-        </div>
-    </div>
-
-    <!-- MODAL XEM THÔNG TIN PHÒNG (CHỈ XEM) -->
-    <div id="viewGuestModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center;">
-        <div class="modal-content" style="background-color: #1e1e1e; color: #fff; padding: 25px; border-radius: 10px; width: 400px; max-width: 90%; position: relative;">
-            <span class="close-btn" onclick="document.getElementById('viewGuestModal').style.display='none'" style="position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #aaa;">&times;</span>
-            <h2 id="viewGuestRoomName" style="margin-bottom: 15px; font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 8px; color: #00ff99;">Chi tiết phòng</h2>
-            
-            <div id="viewGuestInfo" style="line-height: 1.8; font-size: 15px;">
-                <!-- Dữ liệu JS sẽ nhúng vào đây -->
-            </div>
         </div>
     </div>
 </body>

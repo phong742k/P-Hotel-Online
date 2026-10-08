@@ -15,10 +15,11 @@
         <h1 class="logo-title" onclick="switchTab('dashboard')">HOTEL VẠN HẢI</h1>
         <div class="header-right">
             <!-- BOX DOANH THU -->
-            <div class="revenue-summary">
-                <span>Hôm qua: <b id="revYesterday" style="color: #007bff;">0đ</b></span>
+            <div class="revenue-summary" style="display: flex; align-items: center; gap: 10px;">
+                <span>Hôm qua: <b id="revYesterday" style="color: #007bff; display: inline-block; min-width: 100px; text-align: right;">***</b></span>
                 <span style="color: #555;">|</span>
-                <span>Hôm nay: <b id="revToday" style="color: #ffc107;">0đ</b></span>
+                <span>Hôm nay: <b id="revToday" style="color: #ffc107; display: inline-block; min-width: 100px; text-align: right;">***</b></span>
+                <span id="toggleRevenueIcon" onclick="toggleRevenueVisibility()" style="cursor: pointer; font-size: 18px; margin-left: 5px; width: 25px; text-align: center;" title="Hiện/Ẩn doanh thu">🙈</span>
             </div>
             <!-- ĐỒNG HỒ THỜI GIAN THỰC -->
             <div id="realtimeClock" style="color: #00ff99; text-align: center; padding: 0 20px; margin: 0 15px; border-left: 1px solid #333; border-right: 1px solid #333; display: flex; flex-direction: column; justify-content: center;">

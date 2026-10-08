@@ -199,7 +199,12 @@ function createRoomCard(room) {
         if (room.activeBooking.price_type === 'overnight') typeName = 'Qua đêm';
         if (room.activeBooking.price_type === 'daily') typeName = 'Ngày đêm';
         
-        let checkInTime = new Date(room.activeBooking.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        // Tách lấy giờ và ngày riêng rồi ghép lại cho gọn đẹp
+        let inDate = new Date(room.activeBooking.check_in_time);
+        let timeStr = inDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let dateStr = inDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+        let checkInTime = `${timeStr} ngày ${dateStr}`;
+        
         let totalPrepaid = (Number(room.activeBooking.prepaid_cash) || 0) + (Number(room.activeBooking.prepaid_transfer) || 0);
         
         // Tính tiền phòng gốc
@@ -218,7 +223,7 @@ function createRoomCard(room) {
         let tempTotal = pricing.roomPrice + totalDrinkPrice;
         let tempPriceStr = tempTotal.toLocaleString() + 'đ';
 
-        // Xử lý hiển thị ghi chú (Nếu có ghi chú thì mới render ra)
+        // Xử lý hiển thị ghi chú
         let notesHTML = '';
         if (room.activeBooking.notes && room.activeBooking.notes.trim() !== '') {
             notesHTML = `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.3); font-size: 13px; font-style: italic; color: #ffc107; line-height: 1.4; word-wrap: break-word;">📝 ${room.activeBooking.notes}</div>`;
@@ -299,15 +304,14 @@ let historyData = [];
 
 async function fetchHistoryFromSupabase() {
     try {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
+        // Xóa lệnh lọc 7 ngày ở DB đi. 
+        // Lấy 2000 cuốc gần nhất (mày có thể tăng lên nếu muốn, nhưng 2000 là đủ cho web mượt)
         const { data, error } = await supabaseClient
             .from('bookings')
             .select(`*, rooms (room_name), customers (guest_name)`)
             .eq('status', 'completed')
-            .gte('check_out_time', sevenDaysAgo.toISOString())
-            .order('check_out_time', { ascending: false });
+            .order('check_out_time', { ascending: false })
+            .limit(2000); 
 
         if (error) throw error;
         historyData = data; 
@@ -385,16 +389,29 @@ function filterHistory() {
     const priceVal = document.getElementById('historyPriceFilter').value;
     const dateVal = document.getElementById('historyDateFilter').value;
 
+    // Xem lễ tân có đang dùng bộ lọc nào không
+    const isSearching = searchVal !== '' || priceVal !== '' || dateVal !== '';
+
+    // Lấy mốc 7 ngày trước để hiển thị mặc định
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
     const filtered = historyData.filter(item => {
         const roomName = item.rooms ? item.rooms.room_name.toLowerCase() : '';
         const guestName = item.customers ? item.customers.guest_name.toLowerCase() : '';
         const checkOutDateStr = item.check_out_time ? item.check_out_time.substring(0, 10) : '';
 
-        const matchText = roomName.includes(searchVal) || guestName.includes(searchVal);
-        const matchPrice = priceVal === '' || item.price_type === priceVal;
-        const matchDate = dateVal === '' || checkOutDateStr === dateVal;
-
-        return matchText && matchPrice && matchDate;
+        // Nếu ĐANG GÕ TÌM KIẾM -> Mở khóa, quét toàn bộ data khớp với điều kiện
+        if (isSearching) {
+            const matchText = searchVal === '' || roomName.includes(searchVal) || guestName.includes(searchVal);
+            const matchPrice = priceVal === '' || item.price_type === priceVal;
+            const matchDate = dateVal === '' || checkOutDateStr === dateVal;
+            return matchText && matchPrice && matchDate;
+        } 
+        // Nếu ĐỂ TRỐNG -> Đóng gói lại, chỉ hiện 7 ngày qua cho gọn giao diện
+        else {
+            return new Date(item.check_out_time) >= sevenDaysAgo;
+        }
     });
 
     renderHistoryTable(filtered);
@@ -872,6 +889,21 @@ function toggleEditGuestInfo() {
 // =====================================================================
 // TÍNH TOÁN VÀ HIỂN THỊ DOANH THU TRÊN HEADER
 // =====================================================================
+let rawRevToday = 0;
+let rawRevYesterday = 0;
+let isRevHidden = true; // Tao để mặc định ẩn (***) cho an toàn, lễ tân muốn xem thì tự bấm
+
+function toggleRevenueVisibility() {
+    isRevHidden = !isRevHidden;
+    document.getElementById('toggleRevenueIcon').innerText = isRevHidden ? '🙈' : '👁️';
+    renderRevenueNumbers();
+}
+
+function renderRevenueNumbers() {
+    document.getElementById('revToday').innerText = isRevHidden ? '***' : rawRevToday.toLocaleString() + 'đ';
+    document.getElementById('revYesterday').innerText = isRevHidden ? '***' : rawRevYesterday.toLocaleString() + 'đ';
+}
+
 async function updateRevenueSummary() {
     try {
         const now = new Date();
@@ -880,7 +912,6 @@ async function updateRevenueSummary() {
         const startOfYesterday = new Date(startOfToday);
         startOfYesterday.setDate(startOfYesterday.getDate() - 1);
         
-        // Lấy tất cả cuốc khách đã hoàn thành từ hôm qua đến giờ
         const { data, error } = await supabaseClient
             .from('bookings')
             .select('check_out_time, total_paid')
@@ -897,18 +928,24 @@ async function updateRevenueSummary() {
             const paid = Number(booking.total_paid) || 0;
             
             if (checkoutTime >= startOfToday) {
-                revToday += paid; // Cuốc trả phòng hôm nay
+                revToday += paid;
             } else if (checkoutTime >= startOfYesterday && checkoutTime < startOfToday) {
-                revYesterday += paid; // Cuốc trả phòng hôm qua
+                revYesterday += paid;
             }
         });
 
-        document.getElementById('revToday').innerText = revToday.toLocaleString() + 'đ';
-        document.getElementById('revYesterday').innerText = revYesterday.toLocaleString() + 'đ';
+        // Lưu vào biến toàn cục và render ra theo trạng thái bật/tắt
+        rawRevToday = revToday;
+        rawRevYesterday = revYesterday;
+        renderRevenueNumbers();
+
     } catch (err) {
         console.error('Lỗi tính doanh thu:', err.message);
     }
 }
+
+// Gọi hàm này ngay khi tải trang để hiển thị luôn
+updateRevenueSummary();
 
 // Gọi hàm này ngay khi tải trang để hiển thị luôn
 updateRevenueSummary();
