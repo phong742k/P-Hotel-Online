@@ -259,10 +259,22 @@ function renderDashboard() {
     });
 }
 
-setInterval(async () => {
-    await loadSystemSettings(); 
-    fetchRoomsFromSupabase();
-}, 3000);
+// Thay thế setInterval bằng Supabase Realtime
+supabaseClient
+    .channel('public-room-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, payload => {
+        fetchRoomsFromSupabase();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, payload => {
+        fetchRoomsFromSupabase();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'hotel_settings' }, payload => {
+        loadSystemSettings().then(() => fetchRoomsFromSupabase());
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'room_pricing' }, payload => {
+        loadSystemSettings().then(() => fetchRoomsFromSupabase());
+    })
+    .subscribe();
 
 function handleRoomClick(roomId, roomName, status) {
     selectedRoomId = roomId;

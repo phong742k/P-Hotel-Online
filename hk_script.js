@@ -119,6 +119,12 @@ async function executeCleanRoom() {
     }
 }
 
-// Tự động load dữ liệu mỗi 30 giây để cập nhật phòng bẩn mới
-fetchDirtyRooms();
-setInterval(fetchDirtyRooms, 10000);
+fetchDirtyRooms(); // Gọi lần đầu khi load trang
+
+// Lắng nghe thay đổi trạng thái phòng bằng Realtime
+supabaseClient
+    .channel('hk-room-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, payload => {
+        fetchDirtyRooms();
+    })
+    .subscribe();
