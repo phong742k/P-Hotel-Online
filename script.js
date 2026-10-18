@@ -72,7 +72,8 @@ async function fetchRoomsFromSupabase() {
             return {
                 id: room.id, name: room.room_name, floor: floorName,
                 first_hour_price: room.first_hour_price, status: room.status,
-                activeBooking: activeBooking
+                activeBooking: activeBooking,
+                last_cleaned_at: room.last_cleaned_at
             };
         });
         renderDashboard();
@@ -192,7 +193,13 @@ function createRoomCard(room) {
     let cardClass = room.status === 'trong' ? 'status-trong' : (room.status === 'chuadon' ? 'status-chuadon' : 'status-cokhach');
     let innerHTML = `<h3>${room.name}</h3>`;
 
-    if (room.status === 'trong') innerHTML += `<span>Sẵn sàng</span>`;
+    if (room.status === 'trong') {
+        innerHTML += `<span>Sẵn sàng</span>`;
+        if (room.last_cleaned_at) {
+            let cleanTime = new Date(room.last_cleaned_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            innerHTML += `<div style="font-size: 13px; color: #aaa; margin-top: 8px; font-style: italic; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 5px;">🧹 Dọn lúc ${cleanTime}</div>`;
+        }
+    }
     else if (room.status === 'chuadon') innerHTML += `<span>Chưa dọn</span>`;
     else if (room.status === 'co_khach' && room.activeBooking) {
         let typeName = 'Theo giờ';
@@ -203,7 +210,7 @@ function createRoomCard(room) {
         let inDate = new Date(room.activeBooking.check_in_time);
         let timeStr = inDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         let dateStr = inDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-        let checkInTime = `${timeStr} | ${dateStr}`;
+        let checkInTime = `${timeStr} ngày ${dateStr}`;
         
         let totalPrepaid = (Number(room.activeBooking.prepaid_cash) || 0) + (Number(room.activeBooking.prepaid_transfer) || 0);
         

@@ -107,7 +107,10 @@ async function executeCleanRoom() {
     try {
         const { error } = await supabaseClient
             .from('rooms')
-            .update({ status: 'trong' })
+            .update({ 
+                status: 'trong',
+                last_cleaned_at: new Date().toISOString() // Thêm giờ báo cáo dọn xong
+            })
             .eq('id', selectedRoomId);
 
         if (error) throw error;
