@@ -203,7 +203,7 @@ function createRoomCard(room) {
         let inDate = new Date(room.activeBooking.check_in_time);
         let timeStr = inDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         let dateStr = inDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-        let checkInTime = `${timeStr} ngày ${dateStr}`;
+        let checkInTime = `${timeStr} | ${dateStr}`;
         
         let totalPrepaid = (Number(room.activeBooking.prepaid_cash) || 0) + (Number(room.activeBooking.prepaid_transfer) || 0);
         
