@@ -105,16 +105,11 @@ async function executeCleanRoom() {
     if (!selectedRoomId) return;
 
     try {
-        // Lấy giờ hiện tại theo múi giờ Việt Nam và chuyển thành chuẩn ISO
-        const now = new Date();
-        const tzOffset = now.getTimezoneOffset() * 60000; 
-        const localISOTime = (new Date(now - tzOffset)).toISOString().slice(0, -1);
-
         const { error } = await supabaseClient
             .from('rooms')
             .update({ 
                 status: 'trong',
-                last_cleaned_at: localISOTime // Dùng giờ chuẩn local thay vì giờ UTC
+                last_cleaned_at: new Date().toISOString() // Dùng chuẩn quốc tế, trình duyệt sẽ tự dịch ra giờ VN
             })
             .eq('id', selectedRoomId);
 
