@@ -1,5 +1,5 @@
-const SUPABASE_URL = 'https://wohnxhepcaqxyzrgjbrj.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvaG54aGVwY2FxeHl6cmdqYnJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzE4MjgsImV4cCI6MjEwNTY0NzgyOH0.KvQXewy2kBRwGJB8treP2QFu6Cj6maVGxSRYlhoGTAw'; // DÁN LẠI KEY CỦA MÀY
+const SUPABASE_URL = 'https://yaahwvzzraxltlearzmw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhYWh3dnp6cmF4bHRsZWFyem13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzMzEwMjcsImV4cCI6MjEwNzkwNzAyN30.Wwcp_rT5YhI98qh4BFRdjiAtRCuL2z6uATdfZ_1iUBU'; // DÁN LẠI KEY CỦA MÀY
 
 let supabaseClient = null;
 if (window.supabase) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -105,11 +105,16 @@ async function executeCleanRoom() {
     if (!selectedRoomId) return;
 
     try {
+        // Lấy giờ hiện tại theo múi giờ Việt Nam và chuyển thành chuẩn ISO
+        const now = new Date();
+        const tzOffset = now.getTimezoneOffset() * 60000; 
+        const localISOTime = (new Date(now - tzOffset)).toISOString().slice(0, -1);
+
         const { error } = await supabaseClient
             .from('rooms')
             .update({ 
                 status: 'trong',
-                last_cleaned_at: new Date().toISOString() // Thêm giờ báo cáo dọn xong
+                last_cleaned_at: localISOTime // Dùng giờ chuẩn local thay vì giờ UTC
             })
             .eq('id', selectedRoomId);
 

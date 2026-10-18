@@ -1,5 +1,5 @@
-const SUPABASE_URL = 'https://wohnxhepcaqxyzrgjbrj.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvaG54aGVwY2FxeHl6cmdqYnJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzE4MjgsImV4cCI6MjEwNTY0NzgyOH0.KvQXewy2kBRwGJB8treP2QFu6Cj6maVGxSRYlhoGTAw'; // Key cũ
+const SUPABASE_URL = 'https://yaahwvzzraxltlearzmw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhYWh3dnp6cmF4bHRsZWFyem13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzMzEwMjcsImV4cCI6MjEwNzkwNzAyN30.Wwcp_rT5YhI98qh4BFRdjiAtRCuL2z6uATdfZ_1iUBU'; // Key cũ
 
 let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let revenueChartInstance = null;
