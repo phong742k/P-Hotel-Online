@@ -197,7 +197,7 @@ function createRoomCard(room) {
         innerHTML += `<span>Sẵn sàng</span>`;
         if (room.last_cleaned_at) {
             let cleanTime = new Date(room.last_cleaned_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-            innerHTML += `<div style="font-size: 13px; color: #fcffe1; margin-top: 8px; font-style: italic; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 5px;">Dọn lúc ${cleanTime}</div>`;
+            innerHTML += `<div style="font-size: 13px; color: #fcffe1; margin-top: 8px; font-style: italic; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 5px;">🧹 Dọn lúc ${cleanTime}</div>`;
         }
     }
     else if (room.status === 'chuadon') innerHTML += `<span>Chưa dọn</span>`;
@@ -559,8 +559,21 @@ async function submitCheckIn() {
 }
 
 async function updateRoomStatusInSupabase(roomId, status) {
-    await supabaseClient.from('rooms').update({ status: status }).eq('id', roomId);
-    fetchRoomsFromSupabase();
+    try {
+        let payload = { status: status };
+        
+        // Nếu chuyển sang trạng thái 'trong' (tức là xác nhận đã dọn xong), thì kẹp thêm giờ hiện tại vào
+        if (status === 'trong') {
+            payload.last_cleaned_at = new Date().toISOString();
+        }
+
+        const { error } = await supabaseClient.from('rooms').update(payload).eq('id', roomId);
+        if (error) throw error;
+        
+        fetchRoomsFromSupabase();
+    } catch (err) {
+        alert('Lỗi cập nhật trạng thái phòng: ' + err.message);
+    }
 }
 
 // ---------------- CẬP NHẬT PHÒNG ----------------
