@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="admin_style.css">
     <!-- Thư viện Biểu đồ -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Thư viện Biểu đồ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Thư viện xuất Excel (THÊM DÒNG NÀY) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 <body>
     <div class="admin-layout">
@@ -21,6 +25,7 @@
                 <li class="nav-item" onclick="switchAdminTab('tabRevenue', this)" title="Quản lý doanh thu">📊 <span class="nav-text">Quản lý doanh thu</span></li>
                 <li class="nav-item" onclick="switchAdminTab('tabExpense', this)" title="Ghi chép chi phí">💸 <span class="nav-text">Ghi chép chi phí</span></li>
                 <li class="nav-item" onclick="switchAdminTab('tabCustomer', this)" title="Quản lý khách hàng">👥 <span class="nav-text">Quản lý khách hàng</span></li>
+                <li class="nav-item" onclick="switchAdminTab('tabInvoice', this)" title="Quản lý Hóa đơn">🧾 <span class="nav-text">Quản lý Hóa đơn</span></li>
                 <li class="nav-item" onclick="switchAdminTab('tabLiving', this)" title="Tiền ăn & Sinh hoạt">🍽️ <span class="nav-text">Tiền ăn & Sinh hoạt</span></li>
                 <li class="nav-item" onclick="switchAdminTab('tabSettings', this)" title="Cài đặt">⚙️ <span class="nav-text">Cài đặt (Giá)</span></li>
             </ul>
@@ -373,6 +378,44 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- TAB MỚI: QUẢN LÝ HÓA ĐƠN -->
+            <div id="tabInvoice" class="admin-tab">
+                <div class="header-action">
+                    <h2>Danh sách hóa đơn đã xuất</h2>
+                </div>
+
+                <!-- THANH TÌM KIẾM VÀ LỌC HÓA ĐƠN -->
+                <div class="total-expense-banner" style="border-color: #00ff99; display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 10px 15px; margin-bottom: 20px;">
+                    <input type="text" id="invoiceSearchInput" placeholder="🔍 Tìm theo Tên khách, Mã số thuế hoặc Số phòng..." style="flex: 1; background-color: transparent; color: #fff; border: none; outline: none; font-size: 15px; width: 100%;" oninput="filterInvoicesLocally()">
+                    
+                    <div style="display: flex; align-items: center; gap: 10px; border-left: 1px solid #444; padding-left: 15px; white-space: nowrap;">
+                        <label style="color: #aaa; font-size: 14px;">Tháng xuất:</label>
+                        <input type="month" id="invoiceFilterMonth" style="background:#2a2a2a; color:#fff; border:1px solid #444; padding:5px 10px; border-radius:4px; font-size: 14px;" onchange="fetchInvoicesData()">
+                    </div>
+                </div>
+
+                <!-- BẢNG DANH SÁCH -->
+                <div class="table-wrapper" style="max-height: 450px; overflow-y: auto; border: 1px solid #333; border-radius: 5px; background: #1a1a1a;">
+                    <table class="history-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="background-color: #2a2a2a; position: sticky; top: 0; color: #ffc107;">
+                                <th style="padding: 12px 15px;">Số HĐ</th>
+                                <th style="padding: 12px 15px;">Ngày xuất</th>
+                                <th style="padding: 12px 15px;">Khách hàng / Đơn vị</th>
+                                <th style="padding: 12px 15px;">Phòng</th>
+                                <th style="padding: 12px 15px; text-align: right;">Tiền trước thuế</th>
+                                <th style="padding: 12px 15px; text-align: right;">Tiền thuế VAT</th>
+                                <th style="padding: 12px 15px; text-align: right;">Tổng thanh toán</th>
+                                <th style="padding: 12px 15px; text-align: center;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoiceTableBody">
+                            <tr><td colspan="8" style="text-align: center; color: #888; padding: 30px;">Đang tải danh sách hóa đơn...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

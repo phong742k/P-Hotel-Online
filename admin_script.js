@@ -1205,3 +1205,187 @@ async function deleteLivingExpense(id) {
         alert('Lỗi xóa: ' + err.message);
     }
 }
+
+// =====================================================================
+// QUẢN LÝ HÓA ĐƠN ĐÃ XUẤT (TAB INVOICES)
+// =====================================================================
+
+let allInvoicesData = [];
+
+// Đón lõng sự kiện chuyển tab để load dữ liệu Hóa đơn
+document.addEventListener("DOMContentLoaded", () => {
+    const originalSwitch = window.switchAdminTab;
+    if (originalSwitch) {
+        window.switchAdminTab = function(tabId, element) {
+            originalSwitch(tabId, element);
+            if (tabId === 'tabCustomer') fetchCustomersData();
+            if (tabId === 'tabSettings') fetchSettingsData();
+            if (tabId === 'tabInvoice') fetchInvoicesData(); // Kích hoạt tab Hóa đơn
+        };
+    }
+    
+    // Đặt mặc định tháng hiện tại cho bộ lọc hóa đơn
+    const now = new Date();
+    const yearMonth = now.toISOString().slice(0, 7);
+    if(document.getElementById('invoiceFilterMonth')) {
+        document.getElementById('invoiceFilterMonth').value = yearMonth;
+    }
+});
+
+async function fetchInvoicesData() {
+    const monthFilter = document.getElementById('invoiceFilterMonth').value;
+    if (!monthFilter) return;
+
+    // Tính khoảng thời gian của tháng được chọn
+    const startOfMonth = `${monthFilter}-01T00:00:00`;
+    const [y, m] = monthFilter.split('-');
+    const endOfMonth = new Date(y, m, 0).toISOString().split('T')[0] + 'T23:59:59';
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('invoices')
+            .select('*')
+            .gte('export_date', startOfMonth)
+            .lte('export_date', endOfMonth)
+            .order('export_date', { ascending: false });
+
+        if (error) throw error;
+        
+        allInvoicesData = data || [];
+        filterInvoicesLocally(); // Gọi hàm lọc để render ra bảng
+        
+    } catch (err) {
+        console.error('Lỗi tải hóa đơn:', err.message);
+        document.getElementById('invoiceTableBody').innerHTML = `<tr><td colspan="8" style="text-align: center; color: red; padding: 30px;">Lỗi tải dữ liệu.</td></tr>`;
+    }
+}
+
+// Hàm lọc hóa đơn tìm kiếm siêu tốc trên máy
+function filterInvoicesLocally() {
+    const keyword = (document.getElementById('invoiceSearchInput').value || '').trim().toLowerCase();
+    
+    const filtered = allInvoicesData.filter(inv => {
+        const name = (inv.guest_name || '').toLowerCase();
+        const tax = (inv.tax_code || '').toLowerCase();
+        const room = (inv.room_name || '').toString().toLowerCase();
+        return name.includes(keyword) || tax.includes(keyword) || room.includes(keyword);
+    });
+
+    renderInvoicesTable(filtered);
+}
+
+// Render dữ liệu ra bảng Html
+function renderInvoicesTable(invoices) {
+    const tbody = document.getElementById('invoiceTableBody');
+    let totalVAT = 0;
+    let html = '';
+
+    if (invoices.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #888; padding: 30px;">Không có hóa đơn nào phù hợp.</td></tr>`;
+        document.getElementById('totalInvoiceVal').innerText = '0đ';
+        return;
+    }
+
+    invoices.forEach(inv => {
+        
+        const dateStr = new Date(inv.export_date).toLocaleString('vi-VN');
+        const gstName = inv.guest_name || 'Khách lẻ';
+        const mstText = inv.tax_code ? `<br><span style="font-size: 11px; color:#aaa;">MST: ${inv.tax_code}</span>` : '';
+        
+        html += `
+            <tr style="border-bottom: 1px solid #333;">
+                <td style="padding: 12px 15px; color: #00ff99; font-weight: bold;">${inv.invoice_no}</td>
+                <td style="padding: 12px 15px; font-size: 13px;">${dateStr}</td>
+                <td style="padding: 12px 15px;"><b>${gstName}</b>${mstText}</td>
+                <td style="padding: 12px 15px; text-align: center;">${inv.room_name || '-'}</td>
+                <td style="padding: 12px 15px; text-align: right; color: #ccc;">${fmtMoney(inv.subtotal)}</td>
+                <td style="padding: 12px 15px; text-align: right; color: #ff8000;">${fmtMoney(inv.vat_amount)} <span style="font-size:11px">(${inv.vat_rate}%)</span></td>
+                <td style="padding: 12px 15px; text-align: right; color: #ffc107; font-weight: bold; font-size: 16px;">${fmtMoney(inv.final_total)}</td>
+                <td style="padding: 12px 15px; text-align: center;">
+                    <button style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold;" onclick='reDownloadExcelInvoice(${JSON.stringify(inv)})'>Tải Excel</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+// Hàm nặn lại file Excel y chang file gốc lúc xuất
+function reDownloadExcelInvoice(inv) {
+    const isDoubleRoom = (inv.room_name === '401' || inv.room_name === '501');
+    const exportDateStr = new Date(inv.export_date).toLocaleString('vi-VN');
+    const checkIn = new Date(inv.check_in_time).toLocaleString('vi-VN');
+    const checkOut = new Date(inv.check_out_time).toLocaleString('vi-VN');
+    
+    let excelRows = [
+        ["HOTEL VẠN HẢI"],
+        ["Địa chỉ: 56/4 Lê Quang Hoà, P. Thới An, TP. Hồ Chí Minh"],
+        ["SĐT: 0858 718 588"],
+        [],
+        ["BẢN SAO HÓA ĐƠN THANH TOÁN", '', '', '', ''],
+        [],
+        ["Số hóa đơn:", inv.invoice_no, '', "Ngày xuất:", exportDateStr],
+        ["Khách hàng:", inv.guest_name || '', '', "Số phòng:", inv.room_name || ''],
+        ["Mã số thuế:", inv.tax_code || '', '', "Giờ vào:", checkIn],
+        ["Địa chỉ:", inv.address || '', '', "Giờ ra:", checkOut],
+        [],
+        ["STT", "Nội dung dịch vụ", "Số lượng", "Đơn giá", "Thành tiền"]
+    ];
+
+    let rIdx = 1;
+    // Dòng tiền phòng
+    excelRows.push([rIdx++, isDoubleRoom ? "Tiền phòng đôi" : "Tiền phòng đơn", 1, inv.room_cost, inv.room_cost]);
+    
+    // Gộp tất cả đồ uống vào 1 dòng vì Admin không lưu chi tiết từng loại nước
+    if (inv.drink_cost > 0) {
+        excelRows.push([rIdx++, "Đồ uống & Dịch vụ", 1, inv.drink_cost, inv.drink_cost]);
+    }
+    
+    if (inv.surcharge > 0) excelRows.push([rIdx++, "Phụ thu", 1, inv.surcharge, inv.surcharge]);
+    if (inv.discount > 0) excelRows.push([rIdx++, "Giảm giá", 1, -inv.discount, -inv.discount]);
+
+    excelRows.push(['', '', '', '', '']);
+    excelRows.push(['', '', '', "Cộng tiền hàng:", inv.subtotal]);
+    excelRows.push(['', '', '', `Thuế GTGT (${inv.vat_rate}%):`, inv.vat_amount]);
+    excelRows.push(['', '', '', "Tổng cộng:", inv.final_total]);
+
+    // Format Excel (Cell styling y như Lễ tân)
+    const ws = XLSX.utils.aoa_to_sheet(excelRows);
+    ws['!cols'] = [{ wch: 15 }, { wch: 40 }, { wch: 10 }, { wch: 25 }, { wch: 25 }];
+    ws['!merges'] = [{ s: { r: 4, c: 0 }, e: { r: 4, c: 4 } }];
+
+    for (let R = 0; R < excelRows.length; ++R) {
+        for (let C = 0; C < excelRows[R].length; ++C) {
+            const cellRef = XLSX.utils.encode_cell({r: R, c: C});
+            if (!ws[cellRef]) continue;
+
+            let s = { font: { name: "Arial", sz: 11 }, alignment: { vertical: "center" } };
+
+            if (R === 0 && C === 0) { s.font.bold = true; s.font.sz = 14; }
+            if (R === 1 || R === 2) { s.font.italic = true; }
+            if (R === 4 && C === 0) { s.font.bold = true; s.font.sz = 16; s.alignment.horizontal = "center"; }
+
+            if (R === 11) {
+                s.font.bold = true;
+                s.fill = { fgColor: { rgb: "EFEFEF" } };
+                s.border = { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} };
+                s.alignment.horizontal = "center";
+            }
+            if (R > 11 && R < excelRows.length - 4 && excelRows[R][0] !== '') {
+                s.border = { top: {style:'thin'}, bottom: {style:'thin'}, left: {style:'thin'}, right: {style:'thin'} };
+                if (C === 3 || C === 4) s.numFmt = '#,##0';
+            }
+            if (R >= excelRows.length - 3) {
+                if (C === 3 || C === 4) { s.font.bold = true; s.numFmt = '#,##0'; }
+            }
+            ws[cellRef].s = s;
+        }
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "HoaDon");
+    
+    const fileName = `Copy_${inv.invoice_no}_${(inv.guest_name||'').replace(/\s+/g, '_')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+}
