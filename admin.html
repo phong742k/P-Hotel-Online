@@ -47,7 +47,7 @@
                     </div>
                 </div>
 
-                <!-- CARDS -->
+                <!-- HÀNG 1: CHI TIẾT DOANH THU (Chạy theo bộ lọc) -->
                 <div class="dashboard-cards">
                     <div class="card">
                         <h3>Tổng Doanh Thu</h3>
@@ -75,21 +75,43 @@
                         <div class="comparison" id="compDiscount">--</div>
                     </div>
                 </div>
-                <!-- CỤM 3 Ô MỚI XUỐNG DÒNG ĐÂY -->
-                <div class="dashboard-cards" style="margin-top: 15px; border-top: 1px dashed #444; padding-top: 20px;">
-                    <div class="card" style="background-color: #2a1a1a; border-color: #ff4d4d;">
+
+                <!-- HÀNG 2: CHI PHÍ & LỢI NHUẬN (Chạy theo bộ lọc) -->
+                <div class="dashboard-cards" style="margin-top: 15px;">
+                    <div class="card" style="border-color: #ff4d4d; border-style: dashed; background: #2a1a1a;">
                         <h3>Tổng Chi Cố Định</h3>
                         <div class="value" id="valTotalExp" style="color: #ff4d4d;">0đ</div>
                     </div>
-                    <div class="card" style="background-color: #2a2a1a; border-color: #ffc107;">
+                    <div class="card" style="border-color: #ffc107; border-style: dashed; background: #2a2a1a;">
                         <h3>Chi Phí Sinh Hoạt</h3>
                         <div class="value" id="valTotalLiveExp" style="color: #ffc107;">0đ</div>
                     </div>
-                    <div class="card" style="background-color: #1a2a1a; border-color: #00ff99;">
-                        <h3>LỢI NHUẬN TẠM TÍNH</h3>
-                        <div class="value" id="valProfit" style="color: #00ff99;">0đ</div>
+                    <div class="card" style="border-color: #00ff99; border-style: dashed; background: #1a2a1a;">
+                        <h3>Lợi Nhuận Tạm Tính</h3>
+                        <div class="value" id="valTempProfit" style="color: #00ff99;">0đ</div>
                     </div>
                 </div>
+
+                <!-- HÀNG 3: CHỐT SỔ THÁNG (Cố định theo tháng hiện tại/trước) -->
+                <div style="margin-top: 25px; padding-top: 15px; border-top: 1px dashed #444;">
+                    <h3 id="monthlyRowTitle" style="color: #aaa; margin-bottom: 15px; font-size: 16px; letter-spacing: 1px; text-transform: uppercase;">TỔNG KẾT THÁNG NÀY</h3>
+                    <div class="dashboard-cards">
+                        <div class="card" style="background-color: #1a2a1a; border-color: #00ff99; border-width: 2px;">
+                            <h3>Tổng Doanh Thu Tháng</h3>
+                            <div class="value" id="valMonthRev" style="color: #00ff99;">0đ</div>
+                        </div>
+                        <div class="card" style="background-color: #2a1a1a; border-color: #ff4d4d; border-width: 2px;">
+                            <h3>Tổng Chi Phí Tháng</h3>
+                            <div class="value" id="valMonthExp" style="color: #ff4d4d;">0đ</div>
+                            <div class="comparison" style="color: #aaa; font-size: 12px; margin-top: 5px;">Bao gồm Cố định + Sinh hoạt</div>
+                        </div>
+                        <div class="card" style="background-color: #2a2a1a; border-color: #ffc107; border-width: 2px;">
+                            <h3>TỔNG LỢI NHUẬN THÁNG</h3>
+                            <div class="value" id="valMonthProfit" style="color: #ffc107;">0đ</div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- CHART -->
                 <div class="chart-container">
                     <canvas id="revenueChart"></canvas>

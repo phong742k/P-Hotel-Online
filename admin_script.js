@@ -46,9 +46,9 @@ function setQuickFilter(type) {
     fetchRevenueData();
 }
 
-// Khởi tạo mặc định là 7 ngày qua
+// Khởi tạo mặc định là tháng này
 window.onload = () => {
-    setQuickFilter('7days');
+    setQuickFilter('thisMonth');
 };
 
 // Tính toán phần trăm so sánh
@@ -164,18 +164,85 @@ async function fetchRevenueData() {
             prevSurcharge += sur;
             prevDiscount += disc;
         });
-        // --- TÍNH TỔNG CHI PHÍ & SINH HOẠT VÀO LỢI NHUẬN ---
-        const { data: expData } = await supabaseClient.from('expenses').select('amount').gte('expense_date', startVal).lte('expense_date', endVal);
+        // --- TÍNH TỔNG CHI PHÍ & SINH HOẠT HÀNG TRÊN (CHẠY THEO LỌC) ---
+        // Lọc chi phí cố định theo NGÀY (expense_date) nằm trong khoảng thời gian của bộ lọc
+        const { data: expData } = await supabaseClient
+            .from('expenses')
+            .select('amount')
+            .gte('expense_date', startVal)
+            .lte('expense_date', endVal);
+            
         let totalExp = 0;
         if (expData) expData.forEach(e => totalExp += Number(e.amount) || 0);
 
-        const { data: liveData } = await supabaseClient.from('living_expenses').select('amount').gte('date', startVal).lte('date', endVal);
+        // Lọc chi phí sinh hoạt theo NGÀY
+        const { data: liveData } = await supabaseClient
+            .from('living_expenses')
+            .select('amount')
+            .gte('date', startVal)
+            .lte('date', endVal);
+            
         let totalLive = 0;
         if (liveData) liveData.forEach(e => totalLive += Number(e.amount) || 0);
 
+        // Hiển thị ra giao diện (Hàng trên)
         document.getElementById('valTotalExp').innerText = fmtMoney(totalExp);
         document.getElementById('valTotalLiveExp').innerText = fmtMoney(totalLive);
-        document.getElementById('valProfit').innerText = fmtMoney(curTotal - totalExp - totalLive);
+        document.getElementById('valTempProfit').innerText = fmtMoney(curTotal - totalExp - totalLive);
+        // --- TÍNH TỔNG KẾT HÀNG DƯỚI (CỐ ĐỊNH THÁNG NÀY / THÁNG TRƯỚC) ---
+        const now = new Date();
+        const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthStr = `${lastMonthDate.getFullYear()}-${(lastMonthDate.getMonth() + 1).toString().padStart(2, '0')}`;
+        const lastMonthStart = `${lastMonthStr}-01`;
+        const lastMonthEnd = `${lastMonthStr}-${new Date(lastMonthDate.getFullYear(), lastMonthDate.getMonth() + 1, 0).getDate()}`;
+        
+        let monthYYYYMM, monthStartStr, monthEndStr, titleText;
+        
+        // Nhận diện: Nếu ngày bắt đầu & kết thúc TRÙNG KHỚP 100% với tháng trước -> Xem tháng trước
+        if (startVal === lastMonthStart && endVal === lastMonthEnd) {
+            monthYYYYMM = lastMonthStr;
+            monthStartStr = `${lastMonthStart}T00:00:00`;
+            monthEndStr = `${lastMonthEnd}T23:59:59`;
+            titleText = 'TỔNG KẾT THÁNG TRƯỚC';
+        } else {
+            // Tất cả trường hợp khác (7 ngày qua, hôm nay, tháng này...) -> Chốt sổ Tháng hiện tại
+            const thisMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+            const thisMonthStart = `${thisMonthStr}-01`;
+            const thisMonthEnd = `${thisMonthStr}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`;
+            
+            monthYYYYMM = thisMonthStr;
+            monthStartStr = `${thisMonthStart}T00:00:00`;
+            monthEndStr = `${thisMonthEnd}T23:59:59`;
+            titleText = 'TỔNG KẾT THÁNG NÀY';
+        }
+
+        document.getElementById('monthlyRowTitle').innerText = titleText;
+
+        // Query Doanh thu tháng
+        const { data: mRevData } = await supabaseClient.from('bookings')
+            .select('total_paid').eq('status', 'completed').gte('check_out_time', monthStartStr).lte('check_out_time', monthEndStr);
+        let mRev = 0;
+        if (mRevData) mRevData.forEach(b => mRev += Number(b.total_paid) || 0);
+
+        // Query Chi phí cố định tháng
+        const { data: mExpData } = await supabaseClient.from('expenses')
+            .select('amount').eq('target_month', monthYYYYMM);
+        let mExp = 0;
+        if (mExpData) mExpData.forEach(e => mExp += Number(e.amount) || 0);
+
+        // Query Chi phí sinh hoạt tháng
+        const { data: mLiveData } = await supabaseClient.from('living_expenses')
+            .select('amount').gte('date', monthStartStr.substring(0, 10)).lte('date', monthEndStr.substring(0, 10));
+        let mLive = 0;
+        if (mLiveData) mLiveData.forEach(e => mLive += Number(e.amount) || 0);
+
+        let mTotalExp = mExp + mLive;
+        let mProfit = mRev - mTotalExp;
+
+        // Hiển thị ra giao diện (Hàng dưới)
+        document.getElementById('valMonthRev').innerText = fmtMoney(mRev);
+        document.getElementById('valMonthExp').innerText = fmtMoney(mTotalExp);
+        document.getElementById('valMonthProfit').innerText = fmtMoney(mProfit);
 
         // Render Cards
         document.getElementById('valTotalRev').innerText = fmtMoney(curTotal);
