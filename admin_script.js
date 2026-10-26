@@ -164,18 +164,30 @@ async function fetchRevenueData() {
             prevSurcharge += sur;
             prevDiscount += disc;
         });
-        // --- TÍNH TỔNG CHI PHÍ & SINH HOẠT HÀNG TRÊN (CHẠY THEO LỌC) ---
-        // Lọc chi phí cố định theo NGÀY (expense_date) nằm trong khoảng thời gian của bộ lọc
-        const { data: expData } = await supabaseClient
-            .from('expenses')
+
+        // --- TÍNH TỔNG CHI PHÍ & SINH HOẠT HÀNG TRÊN (CHẠY THEO NGÀY LỌC + CHẶN CỦA THÁNG TRƯỚC) ---
+        const targetMonthStart = startVal.substring(0, 7);
+        const targetMonthEnd = endVal.substring(0, 7);
+
+        // 1. Quét theo NGÀY THỰC TẾ (để đảm bảo lọc 7 ngày vẫn chạy đúng)
+        let expQuery = supabaseClient.from('expenses')
             .select('amount')
             .gte('expense_date', startVal)
             .lte('expense_date', endVal);
-            
+
+        // 2. CHỐT CHẶN: Ép thêm điều kiện chỉ lấy các khoản chi thuộc đúng tháng đang lọc 
+        // (Tránh cộng nhầm khoản trả nợ của tháng trước vào)
+        if (targetMonthStart === targetMonthEnd) {
+            expQuery = expQuery.eq('target_month', targetMonthStart);
+        } else {
+            expQuery = expQuery.gte('target_month', targetMonthStart).lte('target_month', targetMonthEnd);
+        }
+
+        const { data: expData } = await expQuery;
         let totalExp = 0;
         if (expData) expData.forEach(e => totalExp += Number(e.amount) || 0);
 
-        // Lọc chi phí sinh hoạt theo NGÀY
+        // Lấy chi phí sinh hoạt cũng chạy theo NGÀY THỰC TẾ
         const { data: liveData } = await supabaseClient
             .from('living_expenses')
             .select('amount')
@@ -185,10 +197,11 @@ async function fetchRevenueData() {
         let totalLive = 0;
         if (liveData) liveData.forEach(e => totalLive += Number(e.amount) || 0);
 
-        // Hiển thị ra giao diện (Hàng trên)
+        // Hiển thị ra Hàng 2
         document.getElementById('valTotalExp').innerText = fmtMoney(totalExp);
         document.getElementById('valTotalLiveExp').innerText = fmtMoney(totalLive);
         document.getElementById('valTempProfit').innerText = fmtMoney(curTotal - totalExp - totalLive);
+
         // --- TÍNH TỔNG KẾT HÀNG DƯỚI (CỐ ĐỊNH THÁNG NÀY / THÁNG TRƯỚC) ---
         const now = new Date();
         const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
