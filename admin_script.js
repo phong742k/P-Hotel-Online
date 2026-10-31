@@ -20,28 +20,32 @@ function switchAdminTab(tabId, element) {
 // Hàm format tiền
 const fmtMoney = (num) => (num || 0).toLocaleString('vi-VN') + 'đ';
 
-// Hàm gán bộ lọc nhanh
+// Hàm gán bộ lọc nhanh (Đã fix lỗi múi giờ VN)
 function setQuickFilter(type) {
-    const today = new Date();
+    const now = new Date();
+    // Ép lấy đúng ngày giờ Local của Việt Nam (bù trừ Timezone offset)
+    const tzOffset = now.getTimezoneOffset() * 60000;
+    const localToday = new Date(now.getTime() - tzOffset);
+    
     const endInput = document.getElementById('filterEnd');
     const startInput = document.getElementById('filterStart');
     
-    endInput.value = today.toISOString().split('T')[0];
+    endInput.value = localToday.toISOString().split('T')[0];
 
-    let start = new Date();
+    let start = new Date(now);
     if (type === '7days') {
-        start.setDate(today.getDate() - 6);
+        start.setDate(now.getDate() - 6);
     } else if (type === 'thisMonth') {
-        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
     } else if (type === 'lastMonth') {
-        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        let endLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-        endInput.value = endLastMonth.toISOString().split('T')[0];
+        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        let endLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        const endLastLocal = new Date(endLastMonth.getTime() - tzOffset);
+        endInput.value = endLastLocal.toISOString().split('T')[0];
     }
     
-    // Convert to local YYYY-MM-DD
-    const tzOffset = start.getTimezoneOffset() * 60000;
-    startInput.value = (new Date(start - tzOffset)).toISOString().split('T')[0];
+    const startLocal = new Date(start.getTime() - tzOffset);
+    startInput.value = startLocal.toISOString().split('T')[0];
     
     fetchRevenueData();
 }

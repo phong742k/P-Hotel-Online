@@ -936,19 +936,25 @@ function renderRevenueNumbers() {
     document.getElementById('revYesterday').innerText = isRevHidden ? '***' : rawRevYesterday.toLocaleString() + 'đ';
 }
 
+// Tính toán doanh thu Hôm nay / Hôm qua (Đã fix lỗi kéo lố giờ UTC)
 async function updateRevenueSummary() {
     try {
         const now = new Date();
+        // Tạo mốc 00:00:00 của hôm nay và hôm qua theo giờ ĐỊA PHƯƠNG
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
         const startOfYesterday = new Date(startOfToday);
         startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+        
+        // Tạo chuỗi định dạng so sánh an toàn với Database (Bỏ qua Timezone)
+        // Định dạng YYYY-MM-DDTHH:MM:SS (Giờ VN) để so khớp trực tiếp với DB
+        const tzOffset = startOfYesterday.getTimezoneOffset() * 60000;
+        const localStartOfYesterdayISO = new Date(startOfYesterday.getTime() - tzOffset).toISOString().slice(0, 19);
         
         const { data, error } = await supabaseClient
             .from('bookings')
             .select('check_out_time, total_paid')
             .eq('status', 'completed')
-            .gte('check_out_time', startOfYesterday.toISOString());
+            .gte('check_out_time', localStartOfYesterdayISO);
 
         if (error) throw error;
 
@@ -956,6 +962,7 @@ async function updateRevenueSummary() {
         let revYesterday = 0;
 
         data.forEach(booking => {
+            // Khi lấy dữ liệu từ DB xuống, ép nó hiểu là giờ Local luôn
             const checkoutTime = new Date(booking.check_out_time);
             const paid = Number(booking.total_paid) || 0;
             
@@ -966,7 +973,7 @@ async function updateRevenueSummary() {
             }
         });
 
-        // Lưu vào biến toàn cục và render ra theo trạng thái bật/tắt
+        // Lưu vào biến toàn cục và render
         rawRevToday = revToday;
         rawRevYesterday = revYesterday;
         renderRevenueNumbers();
