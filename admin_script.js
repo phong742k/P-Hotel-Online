@@ -20,26 +20,27 @@ function switchAdminTab(tabId, element) {
 // Hàm format tiền
 const fmtMoney = (num) => (num || 0).toLocaleString('vi-VN') + 'đ';
 
-// Hàm gán bộ lọc nhanh (Đã fix lỗi múi giờ VN)
+// Hàm gán bộ lọc nhanh (Ép chuẩn giờ VN)
 function setQuickFilter(type) {
     const now = new Date();
-    // Ép lấy đúng ngày giờ Local của Việt Nam (bù trừ Timezone offset)
-    const tzOffset = now.getTimezoneOffset() * 60000;
-    const localToday = new Date(now.getTime() - tzOffset);
+    // Ép lấy đúng ngày giờ Local của Việt Nam
+    const vnTime = new Date(now.getTime() + 7 * 3600 * 1000);
+    const tzOffset = vnTime.getTimezoneOffset() * 60000;
+    const localToday = new Date(vnTime.getTime() - tzOffset);
     
     const endInput = document.getElementById('filterEnd');
     const startInput = document.getElementById('filterStart');
     
     endInput.value = localToday.toISOString().split('T')[0];
 
-    let start = new Date(now);
+    let start = new Date(vnTime);
     if (type === '7days') {
-        start.setDate(now.getDate() - 6);
+        start.setDate(vnTime.getDate() - 6);
     } else if (type === 'thisMonth') {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        start = new Date(vnTime.getFullYear(), vnTime.getMonth(), 1);
     } else if (type === 'lastMonth') {
-        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        let endLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        start = new Date(vnTime.getFullYear(), vnTime.getMonth() - 1, 1);
+        let endLastMonth = new Date(vnTime.getFullYear(), vnTime.getMonth(), 0);
         const endLastLocal = new Date(endLastMonth.getTime() - tzOffset);
         endInput.value = endLastLocal.toISOString().split('T')[0];
     }
@@ -75,45 +76,45 @@ function renderComparison(elementId, current, previous) {
 const DRINK_PRICES = { nuoc_suoi: 10000, nuoc_ngot: 20000, bia: 20000, mi_tom: 30000 };
 
 // Lấy và xử lý dữ liệu doanh thu
+// Lấy và xử lý dữ liệu doanh thu (ĐÃ CHUẨN HÓA MÚI GIỜ VIỆT NAM)
 async function fetchRevenueData() {
     const startVal = document.getElementById('filterStart').value;
     const endVal = document.getElementById('filterEnd').value;
     if (!startVal || !endVal) return;
 
-    // Ép giờ bắt đầu từ 00:00:00 và kết thúc ở 23:59:59 theo giờ local của máy
-    const startStr = startVal + 'T00:00:00';
-    const endStr = endVal + 'T23:59:59';
+    // Ép chuẩn UTC cho câu query gửi lên Supabase (tránh lệch cuốc sáng sớm)
+    const startUTC = new Date(`${startVal}T00:00:00+07:00`).toISOString();
+    const endUTC = new Date(`${endVal}T23:59:59+07:00`).toISOString();
 
-    // Tính số ngày để lùi chu kỳ trước so sánh
-    const currentStart = new Date(startVal);
-    const currentEnd = new Date(endVal);
-    const diffTime = Math.abs(currentEnd - currentStart);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    const currentStartLocal = new Date(`${startVal}T00:00:00`);
+    const currentEndLocal = new Date(`${endVal}T00:00:00`);
+    const diffDays = Math.round(Math.abs(currentEndLocal - currentStartLocal) / (1000 * 60 * 60 * 24)) + 1;
     
-    const prevEnd = new Date(currentStart);
-    prevEnd.setDate(prevEnd.getDate() - 1);
-    const prevStart = new Date(prevEnd);
-    prevStart.setDate(prevStart.getDate() - diffDays + 1);
+    const prevEndLocal = new Date(currentStartLocal);
+    prevEndLocal.setDate(prevEndLocal.getDate() - 1);
+    const prevStartLocal = new Date(prevEndLocal);
+    prevStartLocal.setDate(prevStartLocal.getDate() - diffDays + 1);
 
-    const prevStartStr = prevStart.toISOString().split('T')[0] + 'T00:00:00';
-    const prevEndStr = prevEnd.toISOString().split('T')[0] + 'T23:59:59';
+    const prevStartVal = prevStartLocal.toISOString().substring(0, 10);
+    const prevEndVal = prevEndLocal.toISOString().substring(0, 10);
+
+    const prevStartUTC = new Date(`${prevStartVal}T00:00:00+07:00`).toISOString();
+    const prevEndUTC = new Date(`${prevEndVal}T23:59:59+07:00`).toISOString();
 
     try {
-        // Query dữ liệu kỳ hiện tại
         const { data: currentData, error: err1 } = await supabaseClient
             .from('bookings')
             .select('check_out_time, total_paid, surcharge, discount, items')
             .eq('status', 'completed')
-            .gte('check_out_time', startStr)
-            .lte('check_out_time', endStr);
+            .gte('check_out_time', startUTC)
+            .lte('check_out_time', endUTC);
             
-        // Query dữ liệu kỳ trước để so sánh
         const { data: prevData, error: err2 } = await supabaseClient
             .from('bookings')
             .select('total_paid, surcharge, discount, items')
             .eq('status', 'completed')
-            .gte('check_out_time', prevStartStr)
-            .lte('check_out_time', prevEndStr);
+            .gte('check_out_time', prevStartUTC)
+            .lte('check_out_time', prevEndUTC);
 
         if (err1 || err2) throw err1 || err2;
 
@@ -141,8 +142,10 @@ async function fetchRevenueData() {
             curSurcharge += sur;
             curDiscount += disc;
 
-            // Cắt lấy chuỗi ngày YYYY-MM-DD từ check_out_time
-            let dateKey = b.check_out_time.substring(0, 10);
+            // Chuyển giờ UTC từ DB về giờ Việt Nam để cộng tiền vào đúng ngày vẽ biểu đồ
+            let d = new Date(b.check_out_time);
+            let bVnTime = new Date(d.getTime() + 7 * 3600 * 1000);
+            let dateKey = bVnTime.toISOString().substring(0, 10);
             dailyRevenue[dateKey] = (dailyRevenue[dateKey] || 0) + total;
         });
 
@@ -169,18 +172,14 @@ async function fetchRevenueData() {
             prevDiscount += disc;
         });
 
-        // --- TÍNH TỔNG CHI PHÍ & SINH HOẠT HÀNG TRÊN (CHẠY THEO NGÀY LỌC + CHẶN CỦA THÁNG TRƯỚC) ---
         const targetMonthStart = startVal.substring(0, 7);
         const targetMonthEnd = endVal.substring(0, 7);
 
-        // 1. Quét theo NGÀY THỰC TẾ (để đảm bảo lọc 7 ngày vẫn chạy đúng)
         let expQuery = supabaseClient.from('expenses')
             .select('amount')
             .gte('expense_date', startVal)
             .lte('expense_date', endVal);
 
-        // 2. CHỐT CHẶN: Ép thêm điều kiện chỉ lấy các khoản chi thuộc đúng tháng đang lọc 
-        // (Tránh cộng nhầm khoản trả nợ của tháng trước vào)
         if (targetMonthStart === targetMonthEnd) {
             expQuery = expQuery.eq('target_month', targetMonthStart);
         } else {
@@ -191,7 +190,6 @@ async function fetchRevenueData() {
         let totalExp = 0;
         if (expData) expData.forEach(e => totalExp += Number(e.amount) || 0);
 
-        // Lấy chi phí sinh hoạt cũng chạy theo NGÀY THỰC TẾ
         const { data: liveData } = await supabaseClient
             .from('living_expenses')
             .select('amount')
@@ -201,67 +199,64 @@ async function fetchRevenueData() {
         let totalLive = 0;
         if (liveData) liveData.forEach(e => totalLive += Number(e.amount) || 0);
 
-        // Hiển thị ra Hàng 2
         document.getElementById('valTotalExp').innerText = fmtMoney(totalExp);
         document.getElementById('valTotalLiveExp').innerText = fmtMoney(totalLive);
         document.getElementById('valTempProfit').innerText = fmtMoney(curTotal - totalExp - totalLive);
 
-        // --- TÍNH TỔNG KẾT HÀNG DƯỚI (CỐ ĐỊNH THÁNG NÀY / THÁNG TRƯỚC) ---
+        // --- TÍNH TỔNG KẾT HÀNG DƯỚI (CHUẨN GIỜ VN) ---
         const now = new Date();
-        const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const vnTime = new Date(now.getTime() + 7 * 3600 * 1000);
+        const lastMonthDate = new Date(vnTime.getFullYear(), vnTime.getMonth() - 1, 1);
         const lastMonthStr = `${lastMonthDate.getFullYear()}-${(lastMonthDate.getMonth() + 1).toString().padStart(2, '0')}`;
         const lastMonthStart = `${lastMonthStr}-01`;
         const lastMonthEnd = `${lastMonthStr}-${new Date(lastMonthDate.getFullYear(), lastMonthDate.getMonth() + 1, 0).getDate()}`;
         
         let monthYYYYMM, monthStartStr, monthEndStr, titleText;
         
-        // Nhận diện: Nếu ngày bắt đầu & kết thúc TRÙNG KHỚP 100% với tháng trước -> Xem tháng trước
         if (startVal === lastMonthStart && endVal === lastMonthEnd) {
             monthYYYYMM = lastMonthStr;
-            monthStartStr = `${lastMonthStart}T00:00:00`;
-            monthEndStr = `${lastMonthEnd}T23:59:59`;
+            monthStartStr = lastMonthStart;
+            monthEndStr = lastMonthEnd;
             titleText = 'TỔNG KẾT THÁNG TRƯỚC';
         } else {
-            // Tất cả trường hợp khác (7 ngày qua, hôm nay, tháng này...) -> Chốt sổ Tháng hiện tại
-            const thisMonthStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+            const thisMonthStr = `${vnTime.getFullYear()}-${(vnTime.getMonth() + 1).toString().padStart(2, '0')}`;
             const thisMonthStart = `${thisMonthStr}-01`;
-            const thisMonthEnd = `${thisMonthStr}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`;
+            const thisMonthEnd = `${thisMonthStr}-${new Date(vnTime.getFullYear(), vnTime.getMonth() + 1, 0).getDate()}`;
             
             monthYYYYMM = thisMonthStr;
-            monthStartStr = `${thisMonthStart}T00:00:00`;
-            monthEndStr = `${thisMonthEnd}T23:59:59`;
+            monthStartStr = thisMonthStart;
+            monthEndStr = thisMonthEnd;
             titleText = 'TỔNG KẾT THÁNG NÀY';
         }
 
         document.getElementById('monthlyRowTitle').innerText = titleText;
 
-        // Query Doanh thu tháng
+        // Ép UTC cho truy vấn tháng
+        const mStartUTC = new Date(`${monthStartStr}T00:00:00+07:00`).toISOString();
+        const mEndUTC = new Date(`${monthEndStr}T23:59:59+07:00`).toISOString();
+
         const { data: mRevData } = await supabaseClient.from('bookings')
-            .select('total_paid').eq('status', 'completed').gte('check_out_time', monthStartStr).lte('check_out_time', monthEndStr);
+            .select('total_paid').eq('status', 'completed').gte('check_out_time', mStartUTC).lte('check_out_time', mEndUTC);
         let mRev = 0;
         if (mRevData) mRevData.forEach(b => mRev += Number(b.total_paid) || 0);
 
-        // Query Chi phí cố định tháng
         const { data: mExpData } = await supabaseClient.from('expenses')
             .select('amount').eq('target_month', monthYYYYMM);
         let mExp = 0;
         if (mExpData) mExpData.forEach(e => mExp += Number(e.amount) || 0);
 
-        // Query Chi phí sinh hoạt tháng
         const { data: mLiveData } = await supabaseClient.from('living_expenses')
-            .select('amount').gte('date', monthStartStr.substring(0, 10)).lte('date', monthEndStr.substring(0, 10));
+            .select('amount').gte('date', monthStartStr).lte('date', monthEndStr);
         let mLive = 0;
         if (mLiveData) mLiveData.forEach(e => mLive += Number(e.amount) || 0);
 
         let mTotalExp = mExp + mLive;
         let mProfit = mRev - mTotalExp;
 
-        // Hiển thị ra giao diện (Hàng dưới)
         document.getElementById('valMonthRev').innerText = fmtMoney(mRev);
         document.getElementById('valMonthExp').innerText = fmtMoney(mTotalExp);
         document.getElementById('valMonthProfit').innerText = fmtMoney(mProfit);
 
-        // Render Cards
         document.getElementById('valTotalRev').innerText = fmtMoney(curTotal);
         document.getElementById('valRoomRev').innerText = fmtMoney(curRoom);
         document.getElementById('valDrinkRev').innerText = fmtMoney(curDrink);
@@ -274,24 +269,41 @@ async function fetchRevenueData() {
         renderComparison('compSurcharge', curSurcharge, prevSurcharge);
         renderComparison('compDiscount', curDiscount, prevDiscount);
 
-        drawChart(dailyRevenue, currentStart, currentEnd);
+        drawChart(dailyRevenue, currentStartLocal, currentEndLocal);
 
     } catch (err) { console.error('Lỗi lấy data doanh thu:', err.message); }
 }
 
+// Hàm vẽ biểu đồ (Đã fix lỗi mất ngày, trượt cột do lệch UTC)
 function drawChart(dailyRevenue, startDate, endDate) {
     const ctx = document.getElementById('revenueChart').getContext('2d');
     
-    // Tạo mảng các ngày trong khoảng
     let labels = [];
     let dataPoints = [];
-    let curr = new Date(startDate);
     
-    while (curr <= endDate) {
-        let dateStr = curr.toISOString().split('T')[0];
-        let displayStr = dateStr.split('-').reverse().slice(0,2).join('/'); // DD/MM
+    // Tạo 1 bản sao của startDate để chạy vòng lặp an toàn
+    let curr = new Date(startDate.getTime());
+    
+    // Đặt giờ về 12h trưa để khi có bị trừ 7 tiếng (thành 5h sáng) nó vẫn dính đúng vào ngày đó
+    curr.setHours(12, 0, 0, 0); 
+    
+    let end = new Date(endDate.getTime());
+    end.setHours(12, 0, 0, 0);
+
+    while (curr <= end) {
+        // Lấy định dạng YYYY-MM-DD theo đúng giờ ĐỊA PHƯƠNG (Không xài toISOString nữa)
+        const y = curr.getFullYear();
+        const m = String(curr.getMonth() + 1).padStart(2, '0');
+        const d = String(curr.getDate()).padStart(2, '0');
+        
+        let dateStr = `${y}-${m}-${d}`;
+        let displayStr = `${d}/${m}`;
+        
         labels.push(displayStr);
+        // Map đúng key YYYY-MM-DD với data đã xử lý ở hàm trên
         dataPoints.push(dailyRevenue[dateStr] || 0);
+        
+        // Tăng thêm 1 ngày
         curr.setDate(curr.getDate() + 1);
     }
 

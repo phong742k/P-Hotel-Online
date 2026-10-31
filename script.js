@@ -403,33 +403,40 @@ function renderHistoryTable(data) {
     tbody.innerHTML = html;
 }
 
+// 2. Lọc lịch sử lễ tân (Ép chuẩn giờ VN)
 function filterHistory() {
     const searchVal = document.getElementById('historySearch').value.toLowerCase();
     const priceVal = document.getElementById('historyPriceFilter').value;
     const dateVal = document.getElementById('historyDateFilter').value;
 
-    // Xem lễ tân có đang dùng bộ lọc nào không
     const isSearching = searchVal !== '' || priceVal !== '' || dateVal !== '';
 
-    // Lấy mốc 7 ngày trước để hiển thị mặc định
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Mốc 7 ngày trước theo giờ VN
+    const now = new Date();
+    const vnTime = new Date(now.getTime() + 7 * 3600 * 1000);
+    const sevenDaysAgoVn = new Date(vnTime.getTime() - 7 * 24 * 3600 * 1000);
+    const sevenDaysAgoStr = sevenDaysAgoVn.toISOString().substring(0, 10);
 
     const filtered = historyData.filter(item => {
         const roomName = item.rooms ? item.rooms.room_name.toLowerCase() : '';
         const guestName = item.customers ? item.customers.guest_name.toLowerCase() : '';
-        const checkOutDateStr = item.check_out_time ? item.check_out_time.substring(0, 10) : '';
+        
+        // Chuyển check_out_time (UTC) sang đúng ngày VN để lọc không bị dính cuốc ngày khác
+        let checkOutDateStr = '';
+        if (item.check_out_time) {
+            let d = new Date(item.check_out_time);
+            let bVnTime = new Date(d.getTime() + 7 * 3600 * 1000);
+            checkOutDateStr = bVnTime.toISOString().substring(0, 10);
+        }
 
-        // Nếu ĐANG GÕ TÌM KIẾM -> Mở khóa, quét toàn bộ data khớp với điều kiện
         if (isSearching) {
             const matchText = searchVal === '' || roomName.includes(searchVal) || guestName.includes(searchVal);
             const matchPrice = priceVal === '' || item.price_type === priceVal;
             const matchDate = dateVal === '' || checkOutDateStr === dateVal;
             return matchText && matchPrice && matchDate;
         } 
-        // Nếu ĐỂ TRỐNG -> Đóng gói lại, chỉ hiện 7 ngày qua cho gọn giao diện
         else {
-            return new Date(item.check_out_time) >= sevenDaysAgo;
+            return checkOutDateStr >= sevenDaysAgoStr;
         }
     });
 
@@ -936,25 +943,25 @@ function renderRevenueNumbers() {
     document.getElementById('revYesterday').innerText = isRevHidden ? '***' : rawRevYesterday.toLocaleString() + 'đ';
 }
 
-// Tính toán doanh thu Hôm nay / Hôm qua (Đã fix lỗi kéo lố giờ UTC)
+// 1. Tính toán doanh thu Hôm nay / Hôm qua (Chuẩn 100% giờ VN)
 async function updateRevenueSummary() {
     try {
         const now = new Date();
-        // Tạo mốc 00:00:00 của hôm nay và hôm qua theo giờ ĐỊA PHƯƠNG
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const startOfYesterday = new Date(startOfToday);
-        startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+        // Cộng 7 tiếng để lấy chuẩn ngày VN
+        const vnTime = new Date(now.getTime() + 7 * 3600 * 1000);
+        const vnTodayStr = vnTime.toISOString().substring(0, 10);
         
-        // Tạo chuỗi định dạng so sánh an toàn với Database (Bỏ qua Timezone)
-        // Định dạng YYYY-MM-DDTHH:MM:SS (Giờ VN) để so khớp trực tiếp với DB
-        const tzOffset = startOfYesterday.getTimezoneOffset() * 60000;
-        const localStartOfYesterdayISO = new Date(startOfYesterday.getTime() - tzOffset).toISOString().slice(0, 19);
+        const vnYesterday = new Date(vnTime.getTime() - 24 * 3600 * 1000);
+        const vnYesterdayStr = vnYesterday.toISOString().substring(0, 10);
+
+        // Ép mốc 00:00:00 hôm qua (VN) sang UTC chuẩn để query Database không bị lệch
+        const startOfYesterdayUTC = new Date(`${vnYesterdayStr}T00:00:00+07:00`).toISOString();
         
         const { data, error } = await supabaseClient
             .from('bookings')
             .select('check_out_time, total_paid')
             .eq('status', 'completed')
-            .gte('check_out_time', localStartOfYesterdayISO);
+            .gte('check_out_time', startOfYesterdayUTC);
 
         if (error) throw error;
 
@@ -962,22 +969,24 @@ async function updateRevenueSummary() {
         let revYesterday = 0;
 
         data.forEach(booking => {
-            // Khi lấy dữ liệu từ DB xuống, ép nó hiểu là giờ Local luôn
-            const checkoutTime = new Date(booking.check_out_time);
+            if (!booking.check_out_time) return;
+            // Kéo UTC từ DB về, cộng trả 7 tiếng sang giờ VN trước khi chốt sổ
+            let d = new Date(booking.check_out_time);
+            let bVnTime = new Date(d.getTime() + 7 * 3600 * 1000);
+            let bVnDateStr = bVnTime.toISOString().substring(0, 10);
+            
             const paid = Number(booking.total_paid) || 0;
             
-            if (checkoutTime >= startOfToday) {
+            if (bVnDateStr === vnTodayStr) {
                 revToday += paid;
-            } else if (checkoutTime >= startOfYesterday && checkoutTime < startOfToday) {
+            } else if (bVnDateStr === vnYesterdayStr) {
                 revYesterday += paid;
             }
         });
 
-        // Lưu vào biến toàn cục và render
         rawRevToday = revToday;
         rawRevYesterday = revYesterday;
         renderRevenueNumbers();
-
     } catch (err) {
         console.error('Lỗi tính doanh thu:', err.message);
     }
